@@ -1244,4 +1244,112 @@ local function LoadOwnerNews()
         editBox.Font = Enum.Font.Gotham
         editBox.BorderSizePixel = 0
         editBox.ClearTextOnFocus = false
-        Instance.new("UICorner", editBox
+        Instance.new("UICorner", editBox).CornerRadius = UDim.new(0, 6)
+
+        local editBtn = Instance.new("TextButton", editFrame)
+        editBtn.Size = UDim2.new(0.18, 0, 0.75, 0)
+        editBtn.Position = UDim2.new(0.8, 0, 0.125, 0)
+        editBtn.BackgroundColor3 = Color3.fromRGB(200, 150, 0)
+        editBtn.TextColor3 = Color3.new(0, 0, 0)
+        editBtn.Text = "تعديل"
+        editBtn.TextSize = 12
+        editBtn.Font = Enum.Font.GothamBold
+        editBtn.BorderSizePixel = 0
+        Instance.new("UICorner", editBtn).CornerRadius = UDim.new(0, 6)
+
+        editBtn.MouseButton1Click:Connect(function()
+            local idx = tonumber(numBox.Text)
+            if idx and editBox.Text ~= "" then
+                EditNews(idx, editBox.Text)
+                newsLbl.Text = GetNewsText()
+                editBox.Text = ""
+                numBox.Text = ""
+            end
+        end)
+
+        -- زر مسح كل الأخبار
+        local clearBtn = Instance.new("TextButton", ContentFrame)
+        clearBtn.Size = UDim2.new(0, 530, 0, 40)
+        clearBtn.BackgroundColor3 = Color3.fromRGB(180, 30, 30)
+        clearBtn.TextColor3 = Color3.new(1, 1, 1)
+        clearBtn.Text = "🗑️ مسح كل الاخبار"
+        clearBtn.TextSize = 14
+        clearBtn.Font = Enum.Font.GothamBold
+        clearBtn.BorderSizePixel = 0
+        Instance.new("UICorner", clearBtn).CornerRadius = UDim.new(0, 8)
+        clearBtn.MouseButton1Click:Connect(function()
+            ClearNews()
+            newsLbl.Text = "لا يوجد اخبار"
+        end)
+
+    else
+        -- مو اونر - فقط يشوف الأخبار
+        local viewOnly = Instance.new("TextLabel", ContentFrame)
+        viewOnly.Size = UDim2.new(0, 530, 0, 35)
+        viewOnly.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+        viewOnly.TextColor3 = Color3.fromRGB(150, 150, 150)
+        viewOnly.Text = "📖 عرض فقط — التعديل للأونر baker780787"
+        viewOnly.TextSize = 12
+        viewOnly.Font = Enum.Font.Gotham
+        viewOnly.BorderSizePixel = 0
+        Instance.new("UICorner", viewOnly).CornerRadius = UDim.new(0, 8)
+    end
+end
+
+-- تحديث تاب الأخبار في القائمة
+for _, btn in ipairs(SideBar:GetChildren()) do
+    if btn:IsA("TextButton") and btn.Name == "S_الاخبار | News" then
+        btn.MouseButton1Click:Connect(function()
+            SelectTab(btn)
+            LoadOwnerNews()
+        end)
+    end
+end
+
+-- اذا الأونر - يظهر قائمة خاصة
+if isOwner then
+    local ownerBtn = MakeSideBtn("⚙️ لوحة الاونر", 8)
+    ownerBtn.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+    ownerBtn.TextColor3 = Color3.new(0, 0, 0)
+    ownerBtn.MouseButton1Click:Connect(function()
+        SelectTab(ownerBtn)
+        ClearContent()
+
+        local badge = Instance.new("Frame", ContentFrame)
+        badge.Size = UDim2.new(0, 530, 0, 50)
+        badge.BackgroundColor3 = Color3.fromRGB(180, 150, 0)
+        badge.BorderSizePixel = 0
+        Instance.new("UICorner", badge).CornerRadius = UDim.new(0, 8)
+        local badgeLbl = Instance.new("TextLabel", badge)
+        badgeLbl.Size = UDim2.new(1, 0, 1, 0)
+        badgeLbl.BackgroundTransparency = 1
+        badgeLbl.TextColor3 = Color3.new(0, 0, 0)
+        badgeLbl.Text = "👑 لوحة تحكم الاونر — baker780787"
+        badgeLbl.TextSize = 16
+        badgeLbl.Font = Enum.Font.GothamBold
+
+        MakeCard("اضافة خبر جديد", function()
+            LoadOwnerNews()
+        end, true)
+        MakeCard("مسح كل الاخبار", function()
+            ClearNews()
+            N("اخبار","تم مسح كل الاخبار")
+        end, true)
+        MakeCard("تغيير اسم السكربت", function()
+            N("اونر","هذه الميزة قيد التطوير")
+        end, false, true)
+        MakeCard("بث رسالة للجميع", function()
+            local head = GC() and GC():FindFirstChild("Head")
+            if head then Chat:Chat(head, "📢 رسالة من الاونر baker780787: ASTA HUB") end
+        end, true)
+        MakeCard("طرد لاعب من السيرفر", function()
+            N("اونر","FE محدود")
+        end, true)
+        MakeCard("تعطيل السكربت لجميع", function()
+            N("اونر","هذه الميزة تحتاج سيرفر")
+        end, false, true)
+    end)
+
+    N("اونر","مرحباً يا اونر baker780787 👑", 5)
+end
+
