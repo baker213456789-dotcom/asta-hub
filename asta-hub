@@ -408,14 +408,28 @@ for _,p in ipairs(Players:GetPlayers()) do
     end
 end
 
+-- قائمة اللاعبين اللي عندهم السكربت
+local confirmedUsers={[LP.Name]=true}
+
 Players.PlayerAdded:Connect(function(p)
     task.wait(1)
-    p.Chatted:Connect(function(msg) handleMsg(p,msg) end)
-    AddMsg("النظام",p.Name.." joined the script 📢","system")
+    p.Chatted:Connect(function(msg)
+        if not confirmedUsers[p.Name] then
+            local to,_=decodePM(msg)
+            if to then
+                confirmedUsers[p.Name]=true
+                AddMsg("النظام",p.Name.." joined the script 📢","system")
+            end
+        end
+        handleMsg(p,msg)
+    end)
 end)
-
 Players.PlayerRemoving:Connect(function(p)
-    AddMsg("النظام",p.Name.." left the script","system")
+    if confirmedUsers[p.Name] then
+        confirmedUsers[p.Name]=nil
+        AddMsg("النظام",p.Name.." left the script","system")
+    end
+end)
 end)
 
 -- فتح/إغلاق
