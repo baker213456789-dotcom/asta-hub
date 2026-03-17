@@ -1,989 +1,433 @@
--- ASTA TEAM v4.0 FINAL
+-- ASTA CHAT v2 - تصميم مثل شات روبلوكس
 local LP=game:GetService("Players").LocalPlayer
+local Players=game:GetService("Players")
 local RS=game:GetService("RunService")
 local UIS=game:GetService("UserInputService")
-local WS=game:GetService("Workspace")
-local Lighting=game:GetService("Lighting")
-local Debris=game:GetService("Debris")
-local VU=game:GetService("VirtualUser")
 local SG=game:GetService("StarterGui")
 local Chat=game:GetService("Chat")
-local TS=game:GetService("TeleportService")
-local Players=game:GetService("Players")
-local Cam=WS.CurrentCamera
 
 local OWNER="baker780787"
 local isOwner=LP.Name==OWNER
 
-local function GC() return LP.Character end
-local function GHRP() local c=GC();return c and c:FindFirstChild("HumanoidRootPart") end
-local function GH() local c=GC();return c and c:FindFirstChildOfClass("Humanoid") end
-local function N(t,m,d) pcall(function() SG:SetCore("SendNotification",{Title="ASTA "..t,Text=m,Duration=d or 3}) end) end
-local function RB(o) return Color3.fromHSV((tick()*0.25+(o or 0))%1,1,1) end
-local function SC(f,...) pcall(f,...) end
-local function ForParts(fn) local c=GC();if not c then return end;for _,p in ipairs(c:GetDescendants()) do if p:IsA("BasePart") then SC(fn,p) end end end
+local subscribers={[OWNER]=true}
+local isSubscriber=subscribers[LP.Name]==true
 
-local C={}
-local function AC(k,conn) if C[k] then C[k]:Disconnect() end;C[k]=conn end
-local function DC(k) if C[k] then C[k]:Disconnect();C[k]=nil end end
+local allPrivateMsgs={}
+local myPrivateMsgs={}
+local publicMsgs={}
 
-local S={
-    Speed=16,Jump=50,FlySpd=80,FlingPower=500,BangPower=1000,
-    Fly=false,Noclip=false,Invis=false,InfJump=false,
-    God=false,CamLock=false,
-    AntiAFK=true,AntiFling=false,AntiKill=false,
-    AntiVoid=false,AntiFreeze=false,AntiBan=false,
-    AntiTP=false,AntiSpy=false,
-    SpamMsg="",SpamOn=false,SpamSpd=1,
-    Target="",CheckpointPos=nil,
-    AutoFling=false,GravChaos=false,TimeChaos=false,
-    ESPOn=false,AutoChase=false,AutoEscape=false,
-    CustomName="",CustomR=255,CustomG=100,CustomB=0,
-    EventLog={},
-    News={
-        "[+] ASTA TEAM v4.0",
-        "[=] فلنق وبانق محسن",
-        "[=] خانات كتابة للأرقام",
-        "[=] الأونر: baker780787 فقط",
-    },
-}
+local function N(t,m,d) pcall(function() SG:SetCore("SendNotification",{Title=t,Text=m,Duration=d or 3}) end) end
 
--- MOVEMENT
-local function SetSpeed(v) S.Speed=v;local h=GH();if h then h.WalkSpeed=v end end
-local function SetJump(v) S.Jump=v;local h=GH();if h then h.JumpPower=v end end
+-- إخفاء شات روبلوكس الأصلي
+pcall(function() SG:SetCore("ChatActive",false) end)
 
-local _fbv,_fbg
-local function ToggleFly(on)
-    S.Fly=on;local hrp=GHRP();local hum=GH()
-    if on and hrp and hum then
-        hum.PlatformStand=true
-        _fbv=Instance.new("BodyVelocity",hrp);_fbv.Name="A_FV";_fbv.MaxForce=Vector3.new(1e6,1e6,1e6);_fbv.Velocity=Vector3.zero
-        _fbg=Instance.new("BodyGyro",hrp);_fbg.Name="A_FG";_fbg.MaxTorque=Vector3.new(1e6,1e6,1e6);_fbg.P=1e4
-        AC("fly",RS.Heartbeat:Connect(function()
-            if not S.Fly then DC("fly");if _fbv and _fbv.Parent then _fbv:Destroy() end;if _fbg and _fbg.Parent then _fbg:Destroy() end;local h2=GH();if h2 then h2.PlatformStand=false end;return end
-            local d=Vector3.zero;local cf=Cam.CFrame
-            if UIS:IsKeyDown(Enum.KeyCode.W) then d=d+cf.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then d=d-cf.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then d=d-cf.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then d=d+cf.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then d=d+Vector3.new(0,1,0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then d=d-Vector3.new(0,1,0) end
-            if _fbv and _fbv.Parent then _fbv.Velocity=d*S.FlySpd end
-            if _fbg and _fbg.Parent then _fbg.CFrame=cf end
-        end))
-        N("طيران","مفعل")
-    else N("طيران","ايقاف") end
-end
-
-local function ToggleNoclip(on)
-    S.Noclip=on
-    if on then AC("noclip",RS.Stepped:Connect(function() if not S.Noclip then DC("noclip");ForParts(function(p) p.CanCollide=true end);return end;ForParts(function(p) p.CanCollide=false end) end));N("اختراق","مفعل")
-    else ForParts(function(p) p.CanCollide=true end);N("اختراق","ايقاف") end
-end
-
-local function ToggleInvis(on)
-    S.Invis=on
-    local c=GC();if not c then return end
-    for _,obj in ipairs(c:GetDescendants()) do
-        if obj:IsA("BasePart") then obj.LocalTransparencyModifier=on and 1 or 0 end
-    end
-    N("اختفاء",on and "مفعل" or "ايقاف")
-end
-
-local function ToggleInfJump(on) S.InfJump=on;if on then AC("infjump",UIS.JumpRequest:Connect(function() if S.InfJump then local h=GH();if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end end));N("قفز","مفعل") else DC("infjump");N("قفز","ايقاف") end end
-local function ToggleGod(on) S.God=on;if on then AC("god",RS.Heartbeat:Connect(function() if not S.God then DC("god");return end;local h=GH();if h then h.Health=h.MaxHealth end end));N("اله","مفعل") else N("اله","ايقاف") end end
-local function ToggleCamLock(on) S.CamLock=on;if on then AC("camlock",RS.Heartbeat:Connect(function() if not S.CamLock then DC("camlock");Cam.CameraType=Enum.CameraType.Custom;return end;local hrp=GHRP();if not hrp then return end;Cam.CameraType=Enum.CameraType.Scriptable;Cam.CFrame=CFrame.new(hrp.Position+Vector3.new(0,5,10),hrp.Position) end));N("كاميرا","مقفلة") else Cam.CameraType=Enum.CameraType.Custom;N("كاميرا","عادية") end end
-local function SaveCP() local hrp=GHRP();if hrp then S.CheckpointPos=hrp.CFrame;N("شيك بوينت","حفظ") end end
-local function LoadCP() if S.CheckpointPos then local hrp=GHRP();if hrp then hrp.CFrame=S.CheckpointPos;N("شيك بوينت","تم") end else N("شيك بوينت","لا يوجد") end end
-local function TPTool() local hrp=GHRP();local m=LP:GetMouse();if hrp then hrp.CFrame=CFrame.new(m.Hit.Position+Vector3.new(0,3,0)) end end
-local function Respawn() LP:LoadCharacter() end
-
--- CUSTOM
-local function SetCustomName(name) S.CustomName=name;local c=GC();if not c then return end;local head=c:FindFirstChild("Head");if not head then return end;local bg=head:FindFirstChild("ASTA_NT") or Instance.new("BillboardGui",head);bg.Name="ASTA_NT";bg.Size=UDim2.new(0,200,0,50);bg.StudsOffset=Vector3.new(0,2,0);bg.AlwaysOnTop=true;local lbl=bg:FindFirstChildOfClass("TextLabel") or Instance.new("TextLabel",bg);lbl.Size=UDim2.new(1,0,1,0);lbl.BackgroundTransparency=1;lbl.Text=name;lbl.TextSize=16;lbl.Font=Enum.Font.GothamBold;AC("nametag",RS.Heartbeat:Connect(function() lbl.TextColor3=RB() end));N("اسم",name) end
-local function RemoveCustomName() DC("nametag");local c=GC();if not c then return end;local head=c:FindFirstChild("Head");if head then local bg=head:FindFirstChild("ASTA_NT");if bg then bg:Destroy() end end;N("اسم","ازيل") end
-local function SetCustomColor(r,g,b) local c=GC();if not c then return end;local bc=c:FindFirstChild("Body Colors");if bc then local col=Color3.fromRGB(r,g,b);bc.HeadColor3=col;bc.TorsoColor3=col;bc.LeftArmColor3=col;bc.RightArmColor3=col;bc.LeftLegColor3=col;bc.RightLegColor3=col end;N("لون","تم") end
-
--- ══ فلنق وبانق محسن ══
--- الفلنق يعمل عبر تغيير موقع الشخصية بسرعة + BodyVelocity
-local function DoFling(target_char, power)
-    if not target_char then return end
-    local oh=target_char:FindFirstChild("HumanoidRootPart")
-    if not oh then return end
-    -- طريقة 1: BodyVelocity
-    local bv=Instance.new("BodyVelocity")
-    bv.Parent=oh
-    bv.MaxForce=Vector3.new(math.huge,math.huge,math.huge)
-    bv.Velocity=Vector3.new(
-        math.random(-1,1)*power,
-        power*1.5,
-        math.random(-1,1)*power
-    )
-    Debris:AddItem(bv,0.3)
-    -- طريقة 2: دفع إضافي
-    task.wait(0.1)
-    local bv2=Instance.new("BodyVelocity")
-    bv2.Parent=oh
-    bv2.MaxForce=Vector3.new(math.huge,math.huge,math.huge)
-    bv2.Velocity=Vector3.new(
-        math.random(-1,1)*power*2,
-        power*3,
-        math.random(-1,1)*power*2
-    )
-    Debris:AddItem(bv2,0.2)
-end
-
-local function DoBang(target_char, power)
-    if not target_char then return end
-    local oh=target_char:FindFirstChild("HumanoidRootPart")
-    if not oh then return end
-    local bv=Instance.new("BodyVelocity")
-    bv.Parent=oh
-    bv.MaxForce=Vector3.new(math.huge,math.huge,math.huge)
-    bv.Velocity=Vector3.new(0,power*2,0)
-    Debris:AddItem(bv,0.4)
-end
-
--- ══ المضادات ══
-local function ToggleAntiFling(on) S.AntiFling=on;if on then AC("antifling",RS.Heartbeat:Connect(function() if not S.AntiFling then DC("antifling");return end;local hrp=GHRP();if hrp and hrp.Velocity.Magnitude>200 then hrp.Velocity=Vector3.zero;SC(function() hrp.AssemblyLinearVelocity=Vector3.zero end) end end));N("مضاد فلنق","مفعل") else N("مضاد فلنق","ايقاف") end end
-local function ToggleAntiBan(on) S.AntiBan=on;if on then SC(function() local mt=getrawmetatable(game);local old=mt.__namecall;setreadonly(mt,false);mt.__namecall=newcclosure(function(self,...) local m=getnamecallmethod();if(m=="Kick" or m=="Destroy")and self==LP then N("مضاد بانق","تم صد كيك!");return end;return old(self,...) end);setreadonly(mt,true) end);N("مضاد بانق","مفعل") else N("مضاد بانق","ايقاف") end end
-local function ToggleAntiAFK(on) S.AntiAFK=on;if on then AC("antiafk",RS.Heartbeat:Connect(function() if not S.AntiAFK then DC("antiafk");return end;VU:CaptureController();VU:ClickButton2(Vector2.new()) end)) else DC("antiafk") end end
-local function ToggleAntiKill(on) S.AntiKill=on;if on then AC("antikill",RS.Heartbeat:Connect(function() if not S.AntiKill then DC("antikill");return end;local h=GH();if h and h.Health<h.MaxHealth*0.3 then h.Health=h.MaxHealth end end));N("مضاد قتل","مفعل") else N("مضاد قتل","ايقاف") end end
-local function ToggleAntiVoid(on) S.AntiVoid=on;if on then AC("antivoid",RS.Heartbeat:Connect(function() if not S.AntiVoid then DC("antivoid");return end;local hrp=GHRP();if hrp and hrp.Position.Y<-80 then hrp.CFrame=CFrame.new(0,150,0);hrp.Velocity=Vector3.zero;N("مضاد فراغ","انقذتك!") end end));N("مضاد فراغ","مفعل") else N("مضاد فراغ","ايقاف") end end
-local function ToggleAntiFreeze(on) S.AntiFreeze=on;if on then AC("antifreeze",RS.Heartbeat:Connect(function() if not S.AntiFreeze then DC("antifreeze");return end;local hrp=GHRP();local h=GH();if hrp and hrp.Anchored then hrp.Anchored=false end;if h then if h.WalkSpeed==0 then h.WalkSpeed=S.Speed end;h.PlatformStand=false end end));N("مضاد تجميد","مفعل") else N("مضاد تجميد","ايقاف") end end
-local function ToggleAntiSpy(on) S.AntiSpy=on;if on then AC("antispy",RS.Heartbeat:Connect(function() if not S.AntiSpy then DC("antispy");return end;local c=GC();if c then for _,hl in ipairs(c:GetDescendants()) do if hl:IsA("Highlight") then hl:Destroy() end end end end));N("مضاد تجسس","مفعل") else N("مضاد تجسس","ايقاف") end end
-local function AllProtection() ToggleAntiFling(true);ToggleAntiBan(true);ToggleAntiKill(true);ToggleAntiVoid(true);ToggleAntiFreeze(true);ToggleAntiSpy(true);ToggleGod(true);ToggleAntiAFK(true);N("كل الحمايات","8 مضادات مفعلة") end
-
--- TARGET
-local function GetTarget() for _,p in ipairs(Players:GetPlayers()) do if p.Name:lower():find(S.Target:lower()) and p~=LP and p.Character then return p end end;return nil end
-local function FlingTarget() local p=GetTarget();if not p then N("خطا","حدد تارقت");return end;DoFling(p.Character,S.FlingPower);N("فلنق",p.Name) end
-local function ToggleFlingLoop(on) if on then local p=GetTarget();if not p then N("خطا","حدد تارقت");return end;AC("flingloop",RS.Heartbeat:Connect(function() if p.Character then DoFling(p.Character,S.FlingPower) end end));N("فلنق مستمر",p.Name) else DC("flingloop");N("فلنق","ايقاف") end end
-local function BangTarget() local p=GetTarget();if not p then N("خطا","حدد تارقت");return end;DoBang(p.Character,S.BangPower);N("بانق",p.Name) end
-local function ToggleBangLoop(on) if on then local p=GetTarget();if not p then N("خطا","حدد تارقت");return end;AC("bangloop",RS.Heartbeat:Connect(function() if p.Character then DoBang(p.Character,S.BangPower) end end));N("بانق مستمر",p.Name) else DC("bangloop");N("بانق","ايقاف") end end
-local function ToggleSpinTarget(on) if on then local p=GetTarget();if not p then return end;AC("spintarget",RS.Heartbeat:Connect(function() if p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then oh.CFrame=oh.CFrame*CFrame.Angles(0,math.rad(20),0) end end end));N("تدوير",p.Name) else DC("spintarget");N("تدوير","ايقاف") end end
-local function GiantTarget() local p=GetTarget();if not p then return end;if p.Character then local hum=p.Character:FindFirstChildOfClass("Humanoid");if hum then hum.BodyHeightScale.Value=5;hum.BodyWidthScale.Value=5;N("تكبير",p.Name) end end end
-local function TinyTarget() local p=GetTarget();if not p then return end;if p.Character then local hum=p.Character:FindFirstChildOfClass("Humanoid");if hum then hum.BodyHeightScale.Value=0.2;hum.BodyWidthScale.Value=0.2;N("تصغير",p.Name) end end end
-local function PullTarget() local p=GetTarget();if not p then return end;if p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");local hrp=GHRP();if oh and hrp then oh.CFrame=hrp.CFrame+Vector3.new(2,0,0);N("سحب",p.Name) end end end
-local function TogglePullLoop(on) if on then local p=GetTarget();if not p then return end;AC("pullloop",RS.Heartbeat:Connect(function() local hrp=GHRP();if p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh and hrp then oh.CFrame=hrp.CFrame+Vector3.new(2,0,0) end end end));N("سحب مستمر",p.Name) else DC("pullloop");N("سحب","ايقاف") end end
-local function WatchTarget() local p=GetTarget();if not p then return end;AC("watch",RS.Heartbeat:Connect(function() if p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then Cam.CameraType=Enum.CameraType.Scriptable;Cam.CFrame=CFrame.new(oh.Position+Vector3.new(0,8,12),oh.Position) end end end));N("مشاهدة",p.Name) end
-local function StopWatch() DC("watch");Cam.CameraType=Enum.CameraType.Custom end
-local function KillTarget() local p=GetTarget();if not p then return end;if p.Character then local hum=p.Character:FindFirstChildOfClass("Humanoid");if hum then hum.Health=0;N("قتل",p.Name) end end end
-local function TPToTarget() local p=GetTarget();if not p then return end;if p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");local hrp=GHRP();if oh and hrp then hrp.CFrame=oh.CFrame+Vector3.new(2,0,2);N("انتقال",p.Name) end end end
-local function ToggleFollowTarget(on) if on then local p=GetTarget();if not p then return end;AC("follow",RS.Heartbeat:Connect(function() local hrp=GHRP();if p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh and hrp then hrp.CFrame=oh.CFrame+Vector3.new(0,3,0) end end end));N("تتبع",p.Name) else DC("follow");N("تتبع","ايقاف") end end
-local function MimicTarget() local p=GetTarget();if not p then return end;p.Chatted:Connect(function(msg) local head=GC() and GC():FindFirstChild("Head");if head then Chat:Chat(head,msg) end end);N("تقليد",p.Name) end
-local function ListenTarget() local p=GetTarget();if not p then return end;p.Chatted:Connect(function(msg) N("سماع "..p.Name,msg,6) end);N("سماع",p.Name) end
-local function SendUnderground(name) for _,p in ipairs(Players:GetPlayers()) do if p.Name:lower():find(name:lower()) and p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then oh.CFrame=CFrame.new(oh.Position+Vector3.new(0,-500,0));N("تحت الأرض",p.Name) end end end end
-
--- TROLL ALL
-local function FlingAll() for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then DoFling(p.Character,S.FlingPower) end end;N("فلنق","الجميع") end
-local function ToggleFlingAllLoop(on) if on then AC("flingall",RS.Heartbeat:Connect(function() for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then DoFling(p.Character,S.FlingPower) end end end));N("فلنق مستمر","مفعل") else DC("flingall");N("فلنق","ايقاف") end end
-local function BangAll() for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then DoBang(p.Character,S.BangPower) end end;N("بانق","الجميع") end
-local function PullAll() local hrp=GHRP();if not hrp then return end;for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then oh.CFrame=hrp.CFrame+Vector3.new(math.random(-3,3),0,math.random(-3,3)) end end end;N("سحب","الجميع") end
-local function SwapPlayers() local pl={};for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then table.insert(pl,p) end end;if #pl<2 then N("تبديل","تحتاج لاعبين");return end;for i=1,#pl-1,2 do local h1=pl[i].Character:FindFirstChild("HumanoidRootPart");local h2=pl[i+1].Character:FindFirstChild("HumanoidRootPart");if h1 and h2 then local p1=h1.CFrame;h1.CFrame=h2.CFrame;h2.CFrame=p1 end end;N("تبديل","تم") end
-local function GiantAll(on) for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local hum=p.Character:FindFirstChildOfClass("Humanoid");if hum then hum.BodyHeightScale.Value=on and 5 or 1;hum.BodyWidthScale.Value=on and 5 or 1 end end end end
-local function FreezeAll(on) for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then oh.Anchored=on end end end;N("تجميد",on and "مفعل" or "ايقاف") end
-local function StealTools() local n=0;for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then for _,t in ipairs(p.Character:GetChildren()) do if t:IsA("Tool") then t:Clone().Parent=LP.Backpack;n=n+1 end end end end;N("سرقة",n.." أداة") end
-local function ToggleAutoFling(on) S.AutoFling=on;if on then AC("autofling",RS.Heartbeat:Connect(function() if not S.AutoFling then DC("autofling");return end;local hrp=GHRP();if not hrp then return end;for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh and (hrp.Position-oh.Position).Magnitude<20 then DoFling(p.Character,S.FlingPower) end end end end));N("فلنق تلقائي","مفعل") else N("فلنق تلقائي","ايقاف") end end
-
--- TROLL CARS & SERVER
-local function FlingAllCars() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("VehicleSeat") then local bv=Instance.new("BodyVelocity",obj);bv.Velocity=Vector3.new(math.random(-500,500),1000,math.random(-500,500));bv.MaxForce=Vector3.new(math.huge,math.huge,math.huge);Debris:AddItem(bv,0.5) end end;N("سيارات","تطير") end
-local function FlipAllCars() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("VehicleSeat") then obj.CFrame=obj.CFrame*CFrame.Angles(math.rad(180),0,0) end end;N("سيارات","مقلوبة") end
-local function MaxSpeedAllCars() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("VehicleSeat") then obj.MaxSpeed=9999 end end;N("سيارات","سرعة قصوى") end
-local function ToggleCarChaos(on) if on then AC("carchaos",RS.Heartbeat:Connect(function() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("VehicleSeat") and math.random()<0.05 then local bv=Instance.new("BodyVelocity",obj);bv.Velocity=Vector3.new(math.random(-300,300),math.random(100,500),math.random(-300,300));bv.MaxForce=Vector3.new(math.huge,math.huge,math.huge);Debris:AddItem(bv,0.3) end end end));N("فوضى السيارات","مفعل") else DC("carchaos");N("فوضى السيارات","ايقاف") end end
-local function ZeroGravity() WS.Gravity=0;N("جاذبية","صفر") end
-local function NormalGravity() WS.Gravity=196;N("جاذبية","عادية") end
-local function MoonGravity() WS.Gravity=20;N("جاذبية","قمر") end
-local function ToggleGravChaos(on) S.GravChaos=on;if on then AC("gravchaos",RS.Heartbeat:Connect(function() if not S.GravChaos then DC("gravchaos");return end;WS.Gravity=math.random(-200,500) end));N("فوضى جاذبية","مفعل") else DC("gravchaos");WS.Gravity=196;N("جاذبية","عادية") end end
-local function ToggleTimeChaos(on) S.TimeChaos=on;if on then AC("timechaos",RS.Heartbeat:Connect(function() if not S.TimeChaos then DC("timechaos");return end;Lighting.TimeOfDay=string.format("%02d:%02d:00",math.random(0,23),math.random(0,59)) end));N("فوضى وقت","مفعل") else DC("timechaos");N("وقت","عادي") end end
-local function SetDay() Lighting.TimeOfDay="12:00:00";N("الوقت","صباح") end
-local function SetNight() Lighting.TimeOfDay="00:00:00";N("الوقت","ليل") end
-local function StartTrollTimer(sec) task.spawn(function() for i=sec,1,-1 do N("مؤقت",i.." ثانية");task.wait(1) end;DC("flingall");DC("bangloop");DC("flingloop");DC("carchaos");DC("gravchaos");DC("timechaos");N("مؤقت","انتهى") end) end
-
--- ESP & INFO
-local function ToggleESP(on) S.ESPOn=on;if on then for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local hl=p.Character:FindFirstChild("A_ESP") or Instance.new("Highlight",p.Character);hl.Name="A_ESP";hl.FillColor=Color3.fromRGB(255,0,0);hl.OutlineColor=Color3.new(1,1,1);hl.FillTransparency=0.5 end end;N("ESP","مفعل") else for _,p in ipairs(Players:GetPlayers()) do if p.Character then local h=p.Character:FindFirstChild("A_ESP");if h then h:Destroy() end end end;N("ESP","ايقاف") end end
-local function ToggleESPHUD(on) if on then local gui=Instance.new("ScreenGui",LP.PlayerGui);gui.Name="ASTA_ESPHUD";gui.ResetOnSpawn=false;AC("esphud",RS.Heartbeat:Connect(function() if not on then DC("esphud");local g=LP.PlayerGui:FindFirstChild("ASTA_ESPHUD");if g then g:Destroy() end;return end;for _,c in ipairs(gui:GetChildren()) do c:Destroy() end;local hrp=GHRP();if not hrp then return end;for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");local hum=p.Character:FindFirstChildOfClass("Humanoid");if oh and hum then local dist=math.floor((hrp.Position-oh.Position).Magnitude);local sp,os=Cam:WorldToViewportPoint(oh.Position);if os then local lbl=Instance.new("TextLabel",gui);lbl.Position=UDim2.new(0,sp.X-60,0,sp.Y-20);lbl.Size=UDim2.new(0,120,0,40);lbl.BackgroundTransparency=0.5;lbl.BackgroundColor3=Color3.fromRGB(0,0,0);lbl.TextColor3=Color3.fromRGB(0,255,120);lbl.Text=p.Name.."\n"..dist.."m HP:"..math.floor(hum.Health);lbl.TextSize=11;lbl.Font=Enum.Font.GothamBold;lbl.BorderSizePixel=0;Instance.new("UICorner",lbl).CornerRadius=UDim.new(0,4) end end end end end));N("ESP HUD","مفعل") else DC("esphud");local g=LP.PlayerGui:FindFirstChild("ASTA_ESPHUD");if g then g:Destroy() end;N("ESP HUD","ايقاف") end end
-local function GetNearestPlayer() local hrp=GHRP();if not hrp then return nil end;local best,bd=nil,9999;for _,p in ipairs(Players:GetPlayers()) do if p~=LP and p.Character then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then local d=(hrp.Position-oh.Position).Magnitude;if d<bd then best,bd=p,d end end end end;return best,bd end
-local function ShowNearestInfo() local p,dist=GetNearestPlayer();if p then local hum=p.Character and p.Character:FindFirstChildOfClass("Humanoid");N("أقرب",p.Name.." | "..math.floor(dist or 0).."m | HP:"..(hum and math.floor(hum.Health) or 0),6) else N("أقرب","لا يوجد") end end
-local function ToggleAutoChase(on) S.AutoChase=on;if on then AC("chase",RS.Heartbeat:Connect(function() if not S.AutoChase then DC("chase");return end;local p=GetNearestPlayer();local hrp=GHRP();if p and p.Character and hrp then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then local dir=(oh.Position-hrp.Position).Unit;local bv=Instance.new("BodyVelocity",hrp);bv.Velocity=dir*S.Speed*2;bv.MaxForce=Vector3.new(1e4,0,1e4);Debris:AddItem(bv,0.05) end end end));N("مطاردة","مفعل") else N("مطاردة","ايقاف") end end
-local function ToggleAutoEscape(on) S.AutoEscape=on;if on then AC("escape",RS.Heartbeat:Connect(function() if not S.AutoEscape then DC("escape");return end;local p,dist=GetNearestPlayer();local hrp=GHRP();if p and p.Character and hrp and (dist or 999)<25 then local oh=p.Character:FindFirstChild("HumanoidRootPart");if oh then local dir=(hrp.Position-oh.Position).Unit;local bv=Instance.new("BodyVelocity",hrp);bv.Velocity=dir*S.Speed*3;bv.MaxForce=Vector3.new(1e4,0,1e4);Debris:AddItem(bv,0.05) end end end));N("هروب","مفعل") else N("هروب","ايقاف") end end
-local function CopyServerID() N("Server ID",game.JobId,8) end
-local function RejoinServer() SC(function() TS:Teleport(game.PlaceId,LP) end);N("انضمام","جاري...") end
-local function JoinServerByID(id) SC(function() TS:TeleportToPlaceInstance(game.PlaceId,id,LP) end);N("انتقال","جاري...") end
-
--- CHAT
-local function ToggleChatSpam(on) S.SpamOn=on;if on then AC("spam",task.spawn(function() while S.SpamOn do if S.SpamMsg~="" then local head=GC() and GC():FindFirstChild("Head");if head then Chat:Chat(head,S.SpamMsg) end end;task.wait(S.SpamSpd) end end));N("سبام","مفعل") else N("سبام","ايقاف") end end
-local function SpyMessages() for _,p in ipairs(Players:GetPlayers()) do p.Chatted:Connect(function(msg) N("🔍 "..p.Name,msg,5) end) end;N("تجسس","مفعل") end
-local function SpamNames() task.spawn(function() for i=1,5 do local head=GC() and GC():FindFirstChild("Head");if head then for _,p in ipairs(Players:GetPlayers()) do Chat:Chat(head,"@"..p.Name);task.wait(0.3) end end;task.wait(1) end end);N("سبام أسماء","تم") end
-
--- ANIMS
-local currentAnim=nil
-local animIds={["رقصة 1"]="507770239",["رقصة 2"]="507771019",["رقصة 3"]="507776043",["رقصة 4"]="507776510",["رقصة 5"]="507777268",["رقصة 6"]="507777418",["مشية 1"]="180426354",["مشية 2"]="180426354"}
-local function PlayAnim(id) local h=GH();if not h then return end;if currentAnim then SC(function() currentAnim:Stop() end) end;local anim=Instance.new("Animation");anim.AnimationId="rbxassetid://"..id;SC(function() currentAnim=h:LoadAnimation(anim);currentAnim:Play();currentAnim.Looped=true end);N("انميشن","مفعل") end
-local function StopAnim() if currentAnim then SC(function() currentAnim:Stop() end);currentAnim=nil end;N("انميشن","ايقاف") end
-
--- PRESETS
-local function PresetTroll() ToggleFlingAllLoop(true);ToggleGravChaos(true);ToggleCarChaos(true);ToggleTimeChaos(true);N("تخريب كامل","مفعل") end
-local function PresetProtect() AllProtection();N("حماية كاملة","مفعل") end
-local function PresetStealth() ToggleInvis(true);ToggleNoclip(true);ToggleFly(true);N("تخفي","مفعل") end
-local function PresetStop() DC("flingall");DC("flingloop");DC("bangloop");DC("carchaos");DC("gravchaos");DC("timechaos");DC("autofling");WS.Gravity=196;N("ايقاف","كل شيء") end
-
--- HOUSES & BODIES & ETC
-local function GetHouses() local h={};for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("Model") and (obj.Name:lower():find("house") or obj.Name:lower():find("home")) then table.insert(h,obj) end end;return h end
-local function TPToHouse(num) local houses=GetHouses();if houses[num] then local hrp=GHRP();local part=houses[num]:FindFirstChildOfClass("BasePart");if hrp and part then hrp.CFrame=CFrame.new(part.Position+Vector3.new(0,5,0));N("بيت","انتقال "..num) end end end
-local function BurnNearestHouse() local hrp=GHRP();if not hrp then return end;for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("Model") and obj.Name:lower():find("house") then local p=obj:FindFirstChildOfClass("BasePart");if p and (hrp.Position-p.Position).Magnitude<100 then for _,part in ipairs(obj:GetDescendants()) do if part:IsA("BasePart") then local f=Instance.new("Fire",part);f.Size=5;f.Heat=10;Debris:AddItem(f,15) end end;N("حرق","تم");return end end end end
-local function RemoveBand() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("BasePart") and (obj.Name:lower():find("band") or obj.Name:lower():find("barrier")) then obj.Transparency=1;obj.CanCollide=false end end;N("باند","ازيل") end
-local function SpamDoorbell() AC("doorbell",RS.Heartbeat:Connect(function() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("BasePart") and obj.Name:lower():find("bell") then local s=Instance.new("Sound",obj);s.SoundId="rbxassetid://131961136";s.Volume=1;s:Play();Debris:AddItem(s,1) end end end));N("جرس","مفعل") end
-local function SetBodyScale(h,w,d,head) local hum=GH();if not hum then return end;hum.BodyHeightScale.Value=h or 1;hum.BodyWidthScale.Value=w or 1;hum.BodyDepthScale.Value=d or 1;hum.HeadScale.Value=head or 1;N("جسم","تم") end
-local bodyPresets={{name="عادي",h=1,w=1,d=1,hd=1},{name="طويل",h=2.5,w=1,d=1,hd=0.8},{name="ضخم",h=1.5,w=2,d=2,hd=1.2},{name="انمي",h=1.8,w=0.8,d=0.8,hd=1.3},{name="كيوت",h=0.7,w=0.7,d=0.7,hd=1.5},{name="عملاق",h=4,w=4,d=4,hd=3},{name="صغير",h=0.2,w=0.2,d=0.2,hd=0.2},{name="رقبة طويلة",h=2.5,w=1,d=1,hd=0.4},{name="راس كبير",h=1,w=1,d=1,hd=4},{name="عريض",h=1,w=4,d=1,hd=1},{name="مونستر",h=4,w=3,d=3,hd=2.5},{name="ترند",h=3,w=1,d=1,hd=0.6}}
-local function SetQV1() SC(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Level01 end);Lighting.GlobalShadows=false;N("جودة","V1") end
-local function SetQV2() SC(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Level05 end);N("جودة","V2") end
-local function SetQV4() SC(function() settings().Rendering.QualityLevel=Enum.QualityLevel.Level21 end);N("جودة","V4") end
-local function AntiLag() for _,obj in ipairs(WS:GetDescendants()) do if obj:IsA("ParticleEmitter") or obj:IsA("Trail") then obj.Enabled=false end end;N("Anti Lag","مفعل") end
-local function SetFOV(v) Cam.FieldOfView=v or 70;N("FOV",tostring(v)) end
-local function ToggleFreeCam(on) if on then Cam.CameraType=Enum.CameraType.Scriptable;AC("freecam",RS.Heartbeat:Connect(function(dt) if not on then DC("freecam");Cam.CameraType=Enum.CameraType.Custom;return end;local spd=40;local d=Vector3.zero;if UIS:IsKeyDown(Enum.KeyCode.I) then d=d+Cam.CFrame.LookVector end;if UIS:IsKeyDown(Enum.KeyCode.K) then d=d-Cam.CFrame.LookVector end;if UIS:IsKeyDown(Enum.KeyCode.J) then d=d-Cam.CFrame.RightVector end;if UIS:IsKeyDown(Enum.KeyCode.L) then d=d+Cam.CFrame.RightVector end;if UIS:IsKeyDown(Enum.KeyCode.U) then d=d+Vector3.new(0,1,0) end;if UIS:IsKeyDown(Enum.KeyCode.O) then d=d-Vector3.new(0,1,0) end;Cam.CFrame=Cam.CFrame+d*spd*dt end));N("كاميرا حرة","I/J/K/L") else Cam.CameraType=Enum.CameraType.Custom;N("كاميرا","عادية") end end
-local function ToggleRain(on) local ex=WS:FindFirstChild("ASTA_Rain");if ex then ex:Destroy() end;if on then local f=Instance.new("Part",WS);f.Name="ASTA_Rain";f.Size=Vector3.new(500,1,500);f.Position=Vector3.new(0,100,0);f.Anchored=true;f.CanCollide=false;f.Transparency=1;local r=Instance.new("ParticleEmitter",f);r.Rate=800;r.Lifetime=NumberRange.new(2,3);r.Speed=NumberRange.new(80,100);r.Direction=Vector3.new(0,-1,0);r.Color=ColorSequence.new(Color3.fromRGB(150,200,255));r.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.05),NumberSequenceKeypoint.new(1,0.05)});N("مطر","مفعل") else N("مطر","ايقاف") end end
-local function ToggleSnow(on) local ex=WS:FindFirstChild("ASTA_Snow");if ex then ex:Destroy() end;if on then local f=Instance.new("Part",WS);f.Name="ASTA_Snow";f.Size=Vector3.new(500,1,500);f.Position=Vector3.new(0,100,0);f.Anchored=true;f.CanCollide=false;f.Transparency=1;local r=Instance.new("ParticleEmitter",f);r.Rate=300;r.Lifetime=NumberRange.new(5,8);r.Speed=NumberRange.new(5,15);r.Direction=Vector3.new(0,-1,0);r.Color=ColorSequence.new(Color3.fromRGB(255,255,255));r.Size=NumberSequence.new({NumberSequenceKeypoint.new(0,0.25),NumberSequenceKeypoint.new(1,0.1)});N("ثلج","مفعل") else N("ثلج","ايقاف") end end
-local function ToggleDisco(on) if on then AC("disco",RS.Heartbeat:Connect(function() Lighting.Ambient=RB();Lighting.OutdoorAmbient=RB(0.3) end));N("ديسكو","مفعل") else DC("disco");Lighting.Ambient=Color3.fromRGB(100,100,100);N("ديسكو","ايقاف") end end
-local savedOutfits={}
-local function SaveOutfit(slot) slot=slot or 1;local c=GC();if not c then return end;local bc=c:FindFirstChild("Body Colors");local hum=GH();if bc and hum then savedOutfits[slot]={HeadColor=bc.HeadColor3,TorsoColor=bc.TorsoColor3,LArmColor=bc.LeftArmColor3,RArmColor=bc.RightArmColor3,LLegColor=bc.LeftLegColor3,RLegColor=bc.RightLegColor3,H=hum.BodyHeightScale.Value,W=hum.BodyWidthScale.Value,D=hum.BodyDepthScale.Value,Hd=hum.HeadScale.Value};N("سكنة","حفظ "..slot) end end
-local function LoadOutfit(slot) slot=slot or 1;if not savedOutfits[slot] then N("سكنة","لا يوجد "..slot);return end;local o=savedOutfits[slot];local c=GC();if not c then return end;local bc=c:FindFirstChild("Body Colors");local hum=GH();if bc then bc.HeadColor3=o.HeadColor;bc.TorsoColor3=o.TorsoColor;bc.LeftArmColor3=o.LArmColor;bc.RightArmColor3=o.RArmColor;bc.LeftLegColor3=o.LLegColor;bc.RightLegColor3=o.RLegColor end;if hum then hum.BodyHeightScale.Value=o.H;hum.BodyWidthScale.Value=o.W;hum.BodyDepthScale.Value=o.D;hum.HeadScale.Value=o.Hd end;N("سكنة","تحميل "..slot) end
-local function CopyNearestOutfit() local p=GetNearestPlayer();if not p or not p.Character then N("سكنة","لا يوجد قريب");return end;local c2=p.Character;local mc=GC();if mc then local bc2=c2:FindFirstChild("Body Colors");local myBC=mc:FindFirstChild("Body Colors");if bc2 and myBC then myBC.HeadColor3=bc2.HeadColor3;myBC.TorsoColor3=bc2.TorsoColor3;myBC.LeftArmColor3=bc2.LeftArmColor3;myBC.RightArmColor3=bc2.RightArmColor3;myBC.LeftLegColor3=bc2.LeftLegColor3;myBC.RightLegColor3=bc2.RightLegColor3 end end;N("سكنة","نسخ "..p.Name) end
-
--- EVENT LOG
-local function AddLog(event) table.insert(S.EventLog,1,os.date("%H:%M").." "..event);if #S.EventLog>20 then table.remove(S.EventLog) end end
-Players.PlayerAdded:Connect(function(p) AddLog("دخل: "..p.Name);N("دخول",p.Name) end)
-Players.PlayerRemoving:Connect(function(p) AddLog("خرج: "..p.Name);N("خروج",p.Name) end)
-for _,p in ipairs(Players:GetPlayers()) do
-    p.Chatted:Connect(function(msg)
-        AddLog(p.Name..": "..msg)
-        if p==LP then
-            if msg:sub(1,7)=="/fling " then local nm=msg:sub(8);for _,t in ipairs(Players:GetPlayers()) do if t.Name:lower():find(nm:lower()) and t.Character then DoFling(t.Character,S.FlingPower) end end
-            elseif msg:sub(1,6)=="/bang " then local nm=msg:sub(7);for _,t in ipairs(Players:GetPlayers()) do if t.Name:lower():find(nm:lower()) and t.Character then DoBang(t.Character,S.BangPower) end end
-            elseif msg:sub(1,4)=="/tp " then local nm=msg:sub(5);for _,t in ipairs(Players:GetPlayers()) do if t.Name:lower():find(nm:lower()) and t.Character then local oh=t.Character:FindFirstChild("HumanoidRootPart");local hrp=GHRP();if oh and hrp then hrp.CFrame=oh.CFrame+Vector3.new(2,0,2) end end end
-            elseif msg:sub(1,7)=="/speed " then local v=tonumber(msg:sub(8));if v then SetSpeed(v) end
-            elseif msg=="/godon" then ToggleGod(true)
-            elseif msg=="/godoff" then ToggleGod(false)
-            elseif msg=="/flyon" then ToggleFly(true)
-            elseif msg=="/flyoff" then ToggleFly(false)
-            elseif msg=="/esp" then ToggleESP(not S.ESPOn)
-            elseif msg=="/invis" then ToggleInvis(not S.Invis)
-            elseif msg=="/protect" then AllProtection()
-            end
-        end
-    end)
-end
-
-ToggleAntiAFK(true)
-
-LP.CharacterAdded:Connect(function()
-    task.wait(1);SetSpeed(S.Speed);SetJump(S.Jump)
-    if S.God then ToggleGod(true) end;if S.Fly then ToggleFly(true) end
-    if S.Noclip then ToggleNoclip(true) end;if S.InfJump then ToggleInfJump(true) end
-    if S.AntiFling then ToggleAntiFling(true) end;if S.AntiKill then ToggleAntiKill(true) end
-    if S.AntiVoid then ToggleAntiVoid(true) end;if S.AntiFreeze then ToggleAntiFreeze(true) end
-    if S.ESPOn then ToggleESP(true) end
-    if S.CustomName~="" then SetCustomName(S.CustomName) end
-    N("ASTA","تم اعادة التطبيق")
-end)
-
--- ══════════════════════════════════════════
--- GUI
--- ══════════════════════════════════════════
 local PGui=LP.PlayerGui
-local old=PGui:FindFirstChild("ASTA_F");if old then old:Destroy() end
+local old=PGui:FindFirstChild("ASTA_CHAT2");if old then old:Destroy() end
 local SGui=Instance.new("ScreenGui",PGui)
-SGui.Name="ASTA_F";SGui.ResetOnSpawn=false;SGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+SGui.Name="ASTA_CHAT2";SGui.ResetOnSpawn=false;SGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
 
-local Main=Instance.new("Frame",SGui)
-Main.Size=UDim2.new(0,600,0,440)
-Main.Position=UDim2.new(0.5,-300,0.5,-220)
-Main.BackgroundColor3=Color3.fromRGB(5,8,25)
-Main.BorderSizePixel=0;Main.Active=true;Main.Draggable=true
-Instance.new("UICorner",Main).CornerRadius=UDim.new(0,10)
-Instance.new("UIStroke",Main).Color=Color3.fromRGB(0,255,120)
+-- الإطار الرئيسي - أسفل الشاشة مثل روبلوكس
+local ChatFrame=Instance.new("Frame",SGui)
+ChatFrame.Size=UDim2.new(0,500,0,340)
+ChatFrame.Position=UDim2.new(0,0,1,-370)
+ChatFrame.BackgroundColor3=Color3.fromRGB(0,0,0)
+ChatFrame.BackgroundTransparency=0.4
+ChatFrame.BorderSizePixel=0
+Instance.new("UICorner",ChatFrame).CornerRadius=UDim.new(0,8)
 
-local Header=Instance.new("Frame",Main)
-Header.Size=UDim2.new(1,0,0,46)
-Header.BackgroundColor3=Color3.fromRGB(3,6,20)
-Header.BorderSizePixel=0
-Instance.new("UICorner",Header).CornerRadius=UDim.new(0,10)
-Instance.new("UIStroke",Header).Color=Color3.fromRGB(0,255,120)
+-- منطقة الرسائل
+local MsgScroll=Instance.new("ScrollingFrame",ChatFrame)
+MsgScroll.Size=UDim2.new(1,-8,1,-55)
+MsgScroll.Position=UDim2.new(0,4,0,4)
+MsgScroll.BackgroundTransparency=1
+MsgScroll.ScrollBarThickness=2
+MsgScroll.ScrollBarImageColor3=Color3.fromRGB(255,200,0)
+MsgScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+MsgScroll.CanvasSize=UDim2.new(0,0,0,0)
+MsgScroll.BorderSizePixel=0
+MsgScroll.ScrollingDirection=Enum.ScrollingDirection.Y
+local MsgLayout=Instance.new("UIListLayout",MsgScroll)
+MsgLayout.Padding=UDim.new(0,2)
+MsgLayout.SortOrder=Enum.SortOrder.LayoutOrder
 
-local IconBG=Instance.new("Frame",Header)
-IconBG.Size=UDim2.new(0,36,0,36);IconBG.Position=UDim2.new(0,5,0.5,-18)
-IconBG.BackgroundColor3=Color3.fromRGB(0,255,120);IconBG.BorderSizePixel=0
-Instance.new("UICorner",IconBG).CornerRadius=UDim.new(0,18)
-local IconTxt=Instance.new("TextLabel",IconBG)
-IconTxt.Size=UDim2.new(1,0,1,0);IconTxt.BackgroundTransparency=1
-IconTxt.Text="A";IconTxt.TextSize=18;IconTxt.Font=Enum.Font.GothamBold;IconTxt.TextColor3=Color3.new(0,0,0)
+-- إطار الكتابة - أسفل مثل روبلوكس
+local InputBG=Instance.new("Frame",ChatFrame)
+InputBG.Size=UDim2.new(1,0,0,46)
+InputBG.Position=UDim2.new(0,0,1,-46)
+InputBG.BackgroundColor3=Color3.fromRGB(0,0,0)
+InputBG.BackgroundTransparency=0.3
+InputBG.BorderSizePixel=0
+Instance.new("UICorner",InputBG).CornerRadius=UDim.new(0,8)
 
-local TitleL=Instance.new("TextLabel",Header)
-TitleL.Size=UDim2.new(0.5,0,1,0);TitleL.Position=UDim2.new(0,46,0,0)
-TitleL.BackgroundTransparency=1;TitleL.Text="ASTA TEAM v4.0"
-TitleL.TextSize=14;TitleL.Font=Enum.Font.GothamBold
-TitleL.TextColor3=Color3.fromRGB(0,255,120);TitleL.TextXAlignment=Enum.TextXAlignment.Left
-RS.Heartbeat:Connect(function() TitleL.TextColor3=RB() end)
+local InputBox=Instance.new("TextBox",InputBG)
+InputBox.Size=UDim2.new(1,-10,1,-10)
+InputBox.Position=UDim2.new(0,5,0,5)
+InputBox.BackgroundTransparency=1
+InputBox.TextColor3=Color3.new(1,1,1)
+InputBox.PlaceholderText="Click Here To Chat..."
+InputBox.PlaceholderColor3=Color3.fromRGB(180,180,180)
+InputBox.Text=""
+InputBox.TextSize=15
+InputBox.Font=Enum.Font.Gotham
+InputBox.BorderSizePixel=0
+InputBox.ClearTextOnFocus=false
+InputBox.TextXAlignment=Enum.TextXAlignment.Left
 
-if isOwner then
-    local ob=Instance.new("TextLabel",Header)
-    ob.Size=UDim2.new(0,75,0,20);ob.Position=UDim2.new(0.52,0,0.5,-10)
-    ob.BackgroundColor3=Color3.fromRGB(200,160,0);ob.TextColor3=Color3.new(0,0,0)
-    ob.Text="👑 OWNER";ob.TextSize=10;ob.Font=Enum.Font.GothamBold;ob.BorderSizePixel=0
-    Instance.new("UICorner",ob).CornerRadius=UDim.new(0,4)
-end
+-- زر اللاعبين
+local PlayersBtn=Instance.new("TextButton",SGui)
+PlayersBtn.Size=UDim2.new(0,42,0,42)
+PlayersBtn.Position=UDim2.new(0,504,1,-370)
+PlayersBtn.BackgroundColor3=Color3.fromRGB(0,0,0)
+PlayersBtn.BackgroundTransparency=0.4
+PlayersBtn.Text="👥"
+PlayersBtn.TextSize=22
+PlayersBtn.Font=Enum.Font.GothamBold
+PlayersBtn.TextColor3=Color3.new(1,1,1)
+PlayersBtn.BorderSizePixel=0
+Instance.new("UICorner",PlayersBtn).CornerRadius=UDim.new(0,8)
 
-local CloseBtn=Instance.new("TextButton",Header)
-CloseBtn.Size=UDim2.new(0,32,0,32);CloseBtn.Position=UDim2.new(1,-36,0.5,-16)
-CloseBtn.BackgroundColor3=Color3.fromRGB(200,50,50);CloseBtn.Text="✕"
-CloseBtn.TextSize=13;CloseBtn.Font=Enum.Font.GothamBold;CloseBtn.TextColor3=Color3.new(1,1,1);CloseBtn.BorderSizePixel=0
-Instance.new("UICorner",CloseBtn).CornerRadius=UDim.new(0,6)
-CloseBtn.MouseButton1Click:Connect(function() Main.Visible=false end)
+-- قائمة اللاعبين (مخفية في البداية)
+local PlayerPanel=Instance.new("Frame",SGui)
+PlayerPanel.Size=UDim2.new(0,160,0,300)
+PlayerPanel.Position=UDim2.new(0,504,1,-370)
+PlayerPanel.BackgroundColor3=Color3.fromRGB(0,0,0)
+PlayerPanel.BackgroundTransparency=0.3
+PlayerPanel.BorderSizePixel=0
+PlayerPanel.Visible=false
+Instance.new("UICorner",PlayerPanel).CornerRadius=UDim.new(0,8)
 
-local MinBtn=Instance.new("TextButton",Header)
-MinBtn.Size=UDim2.new(0,32,0,32);MinBtn.Position=UDim2.new(1,-72,0.5,-16)
-MinBtn.BackgroundColor3=Color3.fromRGB(180,140,0);MinBtn.Text="—"
-MinBtn.TextSize=13;MinBtn.Font=Enum.Font.GothamBold;MinBtn.TextColor3=Color3.new(0,0,0);MinBtn.BorderSizePixel=0
-Instance.new("UICorner",MinBtn).CornerRadius=UDim.new(0,6)
-local minimized=false
-MinBtn.MouseButton1Click:Connect(function()
-    minimized=not minimized
-    Main.Size=minimized and UDim2.new(0,600,0,46) or UDim2.new(0,600,0,440)
+local PPTitle=Instance.new("TextLabel",PlayerPanel)
+PPTitle.Size=UDim2.new(1,0,0,28)
+PPTitle.BackgroundColor3=Color3.fromRGB(20,20,20)
+PPTitle.BackgroundTransparency=0.3
+PPTitle.TextColor3=Color3.fromRGB(255,200,0)
+PPTitle.Text="  اللاعبين"
+PPTitle.TextSize=13
+PPTitle.Font=Enum.Font.GothamBold
+PPTitle.TextXAlignment=Enum.TextXAlignment.Right
+PPTitle.BorderSizePixel=0
+Instance.new("UICorner",PPTitle).CornerRadius=UDim.new(0,8)
+
+local PPScroll=Instance.new("ScrollingFrame",PlayerPanel)
+PPScroll.Size=UDim2.new(1,-4,1,-32)
+PPScroll.Position=UDim2.new(0,2,0,30)
+PPScroll.BackgroundTransparency=1
+PPScroll.ScrollBarThickness=2
+PPScroll.ScrollBarImageColor3=Color3.fromRGB(255,200,0)
+PPScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
+PPScroll.CanvasSize=UDim2.new(0,0,0,0)
+PPScroll.BorderSizePixel=0
+Instance.new("UIListLayout",PPScroll).Padding=UDim.new(0,2)
+
+PlayersBtn.MouseButton1Click:Connect(function()
+    PlayerPanel.Visible=not PlayerPanel.Visible
 end)
 
-local SideBar=Instance.new("ScrollingFrame",Main)
-SideBar.Size=UDim2.new(0,148,1,-50)
-SideBar.Position=UDim2.new(0,2,0,48)
-SideBar.BackgroundColor3=Color3.fromRGB(3,6,20)
-SideBar.BorderSizePixel=0;SideBar.ScrollBarThickness=2
-SideBar.ScrollBarImageColor3=Color3.fromRGB(0,255,120)
-SideBar.AutomaticCanvasSize=Enum.AutomaticSize.Y
-SideBar.CanvasSize=UDim2.new(0,0,0,0)
-SideBar.ScrollingDirection=Enum.ScrollingDirection.Y
-Instance.new("UICorner",SideBar).CornerRadius=UDim.new(0,7)
-local SL=Instance.new("UIListLayout",SideBar);SL.Padding=UDim.new(0,2)
-Instance.new("UIPadding",SideBar).PaddingTop=UDim.new(0,3)
+-- متغيرات
+local msgCount=0
+local currentPrivateTarget=nil
+local chatMode="public" -- public أو private
 
-local CF=Instance.new("ScrollingFrame",Main)
-CF.Size=UDim2.new(1,-155,1,-50)
-CF.Position=UDim2.new(0,152,0,48)
-CF.BackgroundColor3=Color3.fromRGB(3,6,20)
-CF.BorderSizePixel=0;CF.ScrollBarThickness=3
-CF.ScrollBarImageColor3=Color3.fromRGB(0,255,120)
-CF.AutomaticCanvasSize=Enum.AutomaticSize.Y
-CF.CanvasSize=UDim2.new(0,0,0,0)
-CF.ScrollingDirection=Enum.ScrollingDirection.Y
-Instance.new("UICorner",CF).CornerRadius=UDim.new(0,7)
-local CL=Instance.new("UIListLayout",CF);CL.Padding=UDim.new(0,4)
-CL.FillDirection=Enum.FillDirection.Horizontal;CL.Wraps=true
-local CPad=Instance.new("UIPadding",CF)
-CPad.PaddingTop=UDim.new(0,5);CPad.PaddingLeft=UDim.new(0,5)
+-- دالة إضافة رسالة بتصميم روبلوكس
+local function AddMsg(senderName,text,msgType)
+    msgCount=msgCount+1
+    local row=Instance.new("Frame",MsgScroll)
+    row.Size=UDim2.new(1,-4,0,0)
+    row.AutomaticSize=Enum.AutomaticSize.Y
+    row.BackgroundTransparency=1
+    row.BorderSizePixel=0
+    row.LayoutOrder=msgCount
 
-local G=Color3.fromRGB(0,255,120)
-local DG=Color3.fromRGB(0,170,80)
-local BK=Color3.fromRGB(8,12,35)
-local RD=Color3.fromRGB(220,50,50)
-local OR=Color3.fromRGB(220,120,0)
-local GD=Color3.fromRGB(220,180,0)
-local BL=Color3.fromRGB(0,150,255)
+    -- الاسم بتنسيق [اسم]:
+    local nameColor=Color3.fromRGB(255,200,0) -- أصفر افتراضي
+    local prefix=""
 
-local activeTab=nil
-local function CC() for _,c in ipairs(CF:GetChildren()) do if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then c:Destroy() end end end
+    if msgType=="private" then
+        nameColor=Color3.fromRGB(200,100,255) -- بنفسجي للخاص
+        prefix="🔒 "
+    elseif msgType=="system" then
+        nameColor=Color3.fromRGB(100,255,100) -- أخضر للنظام
+    elseif senderName==LP.Name then
+        nameColor=Color3.fromRGB(100,200,255) -- أزرق فاتح لرسائلي
+    end
 
-local function MSB(name,order,color)
-    local btn=Instance.new("TextButton",SideBar)
-    btn.Name="S_"..name;btn.LayoutOrder=order
-    btn.Size=UDim2.new(1,-4,0,34)
-    btn.BackgroundColor3=Color3.fromRGB(5,8,25)
-    btn.TextColor3=color or G;btn.Text=name
-    btn.TextSize=10;btn.Font=Enum.Font.GothamBold;btn.BorderSizePixel=0
-    Instance.new("UIStroke",btn).Color=color or Color3.fromRGB(0,180,80)
-    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,5)
-    btn.MouseEnter:Connect(function() if activeTab~=btn then btn.BackgroundColor3=Color3.fromRGB(0,30,10) end end)
-    btn.MouseLeave:Connect(function() if activeTab~=btn then btn.BackgroundColor3=Color3.fromRGB(5,8,25) end end)
-    return btn
+    -- الرسالة كاملة في سطر واحد مثل روبلوكس
+    local msgLbl=Instance.new("TextLabel",row)
+    msgLbl.Size=UDim2.new(1,0,0,0)
+    msgLbl.AutomaticSize=Enum.AutomaticSize.Y
+    msgLbl.BackgroundTransparency=1
+    msgLbl.TextWrapped=true
+    msgLbl.TextXAlignment=Enum.TextXAlignment.Right
+    msgLbl.Font=Enum.Font.Gotham
+    msgLbl.TextSize=15
+    msgLbl.BorderSizePixel=0
+
+    -- بناء النص مع لون الاسم
+    -- نعرض الاسم بلون مختلف عبر RichText
+    msgLbl.RichText=true
+    local nameStr=string.format('<font color="rgb(%d,%d,%d)"><b>%s[%s]:</b></font> %s',
+        math.floor(nameColor.R*255),
+        math.floor(nameColor.G*255),
+        math.floor(nameColor.B*255),
+        prefix,
+        senderName,
+        text
+    )
+    msgLbl.Text=nameStr
+    msgLbl.TextColor3=Color3.new(1,1,1)
+
+    -- تمرير للأسفل
+    task.wait()
+    MsgScroll.CanvasPosition=Vector2.new(0,MsgLayout.AbsoluteContentSize.Y+999)
 end
 
-local function ST(btn) if activeTab then activeTab.BackgroundColor3=Color3.fromRGB(5,8,25) end;activeTab=btn;btn.BackgroundColor3=G;btn.TextColor3=Color3.new(0,0,0) end
-
-local function MCard(text,fn,color)
-    local btn=Instance.new("TextButton",CF)
-    btn.Size=UDim2.new(0,190,0,40)
-    btn.BackgroundColor3=color or G;btn.TextColor3=Color3.new(0,0,0)
-    btn.Text=text;btn.TextSize=11;btn.Font=Enum.Font.GothamBold;btn.BorderSizePixel=0
-    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,7)
-    btn.MouseButton1Click:Connect(function() if fn then SC(fn) end;btn.BackgroundColor3=DG;task.wait(0.1);btn.BackgroundColor3=color or G end)
-    btn.MouseEnter:Connect(function() btn.BackgroundColor3=DG end)
-    btn.MouseLeave:Connect(function() btn.BackgroundColor3=color or G end)
-    return btn
-end
-
-local function MTCard(text,onFn,offFn,color)
-    local btn=Instance.new("TextButton",CF)
-    btn.Size=UDim2.new(0,190,0,40)
-    btn.BackgroundColor3=color or G;btn.TextColor3=Color3.new(0,0,0)
-    btn.Text=text;btn.TextSize=11;btn.Font=Enum.Font.GothamBold;btn.BorderSizePixel=0
-    Instance.new("UICorner",btn).CornerRadius=UDim.new(0,7)
-    local dot=Instance.new("Frame",btn)
-    dot.Size=UDim2.new(0,8,0,8);dot.Position=UDim2.new(1,-12,0.5,-4)
-    dot.BackgroundColor3=RD;dot.BorderSizePixel=0
-    Instance.new("UICorner",dot).CornerRadius=UDim.new(0,4)
-    local on=false
-    btn.MouseButton1Click:Connect(function()
-        on=not on;dot.BackgroundColor3=on and Color3.fromRGB(50,255,50) or RD
-        if on then if onFn then SC(onFn) end else if offFn then SC(offFn) end end
-    end)
-    btn.MouseEnter:Connect(function() btn.BackgroundColor3=DG end)
-    btn.MouseLeave:Connect(function() btn.BackgroundColor3=color or G end)
-    return btn
-end
-
--- خانة كتابة رقم مع حد وزر تطبيق
-local function MNumInput(label,defV,minV,maxV,fn)
-    local fr=Instance.new("Frame",CF)
-    fr.Size=UDim2.new(0,393,0,42);fr.BackgroundColor3=BK;fr.BorderSizePixel=0
-    Instance.new("UICorner",fr).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",fr).Color=G
-    local lbl=Instance.new("TextLabel",fr)
-    lbl.Size=UDim2.new(0.38,0,1,0);lbl.Position=UDim2.new(0,8,0,0)
-    lbl.BackgroundTransparency=1;lbl.TextColor3=G;lbl.Text=label
-    lbl.TextSize=11;lbl.Font=Enum.Font.GothamBold;lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local box=Instance.new("TextBox",fr)
-    box.Size=UDim2.new(0.35,0,0.7,0);box.Position=UDim2.new(0.38,0,0.15,0)
-    box.BackgroundColor3=Color3.fromRGB(10,20,50);box.TextColor3=G
-    box.Text=tostring(defV);box.PlaceholderText=tostring(minV).."-"..tostring(maxV)
-    box.TextSize=12;box.Font=Enum.Font.GothamBold;box.BorderSizePixel=0;box.ClearTextOnFocus=true
-    Instance.new("UICorner",box).CornerRadius=UDim.new(0,5)
-    Instance.new("UIStroke",box).Color=G
-    local applyBtn=Instance.new("TextButton",fr)
-    applyBtn.Size=UDim2.new(0.2,0,0.7,0);applyBtn.Position=UDim2.new(0.78,0,0.15,0)
-    applyBtn.BackgroundColor3=G;applyBtn.TextColor3=Color3.new(0,0,0)
-    applyBtn.Text="تطبيق";applyBtn.TextSize=10;applyBtn.Font=Enum.Font.GothamBold;applyBtn.BorderSizePixel=0
-    Instance.new("UICorner",applyBtn).CornerRadius=UDim.new(0,5)
-    applyBtn.MouseButton1Click:Connect(function()
-        local v=tonumber(box.Text)
-        if v then
-            v=math.clamp(v,minV,maxV)
-            box.Text=tostring(v)
-            if fn then SC(fn,v) end
-            N("تطبيق",label.." = "..v)
-        else
-            N("خطا","ادخل رقم صحيح")
-        end
-    end)
-    box.FocusLost:Connect(function(enter)
-        if enter then
-            local v=tonumber(box.Text)
-            if v then v=math.clamp(v,minV,maxV);box.Text=tostring(v);if fn then SC(fn,v) end end
-        end
-    end)
-    return box
-end
-
-local function MInput(label,placeholder,fn)
-    local fr=Instance.new("Frame",CF)
-    fr.Size=UDim2.new(0,393,0,42);fr.BackgroundColor3=BK;fr.BorderSizePixel=0
-    Instance.new("UICorner",fr).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",fr).Color=G
-    local lbl=Instance.new("TextLabel",fr)
-    lbl.Size=UDim2.new(0.3,0,1,0);lbl.Position=UDim2.new(0,7,0,0)
-    lbl.BackgroundTransparency=1;lbl.TextColor3=G;lbl.Text=label
-    lbl.TextSize=11;lbl.Font=Enum.Font.GothamBold;lbl.TextXAlignment=Enum.TextXAlignment.Left
-    local box=Instance.new("TextBox",fr)
-    box.Size=UDim2.new(0.66,0,0.72,0);box.Position=UDim2.new(0.32,0,0.14,0)
-    box.BackgroundColor3=Color3.fromRGB(10,20,50);box.TextColor3=G
-    box.PlaceholderText=placeholder or "";box.Text=""
-    box.TextSize=11;box.Font=Enum.Font.Gotham;box.BorderSizePixel=0;box.ClearTextOnFocus=false
-    Instance.new("UICorner",box).CornerRadius=UDim.new(0,5)
-    Instance.new("UIStroke",box).Color=G
-    box.FocusLost:Connect(function() if fn then SC(fn,box.Text) end end)
-    return box
-end
-
-local function MakePlayersList()
-    local fr=Instance.new("Frame",CF)
-    fr.Size=UDim2.new(0,393,0,150);fr.BackgroundColor3=BK;fr.BorderSizePixel=0
-    Instance.new("UICorner",fr).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",fr).Color=G
-    local title=Instance.new("TextLabel",fr)
-    title.Size=UDim2.new(1,0,0,22);title.BackgroundColor3=Color3.fromRGB(0,30,80)
-    title.TextColor3=G;title.Text="  اللاعبين - اضغط للتحديد"
-    title.TextSize=10;title.Font=Enum.Font.GothamBold;title.TextXAlignment=Enum.TextXAlignment.Left;title.BorderSizePixel=0
-    Instance.new("UICorner",title).CornerRadius=UDim.new(0,7)
-    local scroll=Instance.new("ScrollingFrame",fr)
-    scroll.Size=UDim2.new(1,-4,1,-26);scroll.Position=UDim2.new(0,2,0,24)
-    scroll.BackgroundTransparency=1;scroll.ScrollBarThickness=2
-    scroll.ScrollBarImageColor3=G
-    scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y;scroll.CanvasSize=UDim2.new(0,0,0,0)
-    scroll.ScrollingDirection=Enum.ScrollingDirection.Y;scroll.BorderSizePixel=0
-    Instance.new("UIListLayout",scroll).Padding=UDim.new(0,2)
-    local hrp=GHRP()
+-- تحديث قائمة اللاعبين
+local function UpdatePlayers()
+    for _,c in ipairs(PPScroll:GetChildren()) do
+        if not c:IsA("UIListLayout") then c:Destroy() end
+    end
     for _,p in ipairs(Players:GetPlayers()) do
         if p~=LP then
-            local pbtn=Instance.new("TextButton",scroll)
-            pbtn.Size=UDim2.new(1,-4,0,24);pbtn.BackgroundColor3=Color3.fromRGB(8,15,40)
-            pbtn.BorderSizePixel=0
-            Instance.new("UICorner",pbtn).CornerRadius=UDim.new(0,4)
-            Instance.new("UIStroke",pbtn).Color=G
-            local hum=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
-            local oh=p.Character and p.Character:FindFirstChild("HumanoidRootPart")
-            local dist=hrp and oh and math.floor((hrp.Position-oh.Position).Magnitude) or 0
-            local hp=hum and math.floor(hum.Health) or 0
-            pbtn.Text="  "..p.Name.." | "..dist.."m | "..hp.."HP"
-            pbtn.TextSize=10;pbtn.Font=Enum.Font.GothamBold;pbtn.TextColor3=G
-            pbtn.TextXAlignment=Enum.TextXAlignment.Left
-            pbtn.MouseButton1Click:Connect(function()
-                S.Target=p.Name;N("تارقت",p.Name)
-                pbtn.BackgroundColor3=DG;task.wait(0.2);pbtn.BackgroundColor3=Color3.fromRGB(8,15,40)
+            local btn=Instance.new("TextButton",PPScroll)
+            btn.Size=UDim2.new(1,-4,0,34)
+            btn.BackgroundColor3=Color3.fromRGB(20,20,20)
+            btn.BackgroundTransparency=0.4
+            btn.TextColor3=Color3.fromRGB(255,200,0)
+            btn.Font=Enum.Font.GothamBold
+            btn.TextSize=12
+            btn.BorderSizePixel=0
+            btn.TextXAlignment=Enum.TextXAlignment.Right
+            Instance.new("UICorner",btn).CornerRadius=UDim.new(0,6)
+
+            local subIcon=subscribers[p.Name] and "⭐ " or ""
+            btn.Text="  "..subIcon..p.Name
+
+            btn.MouseButton1Click:Connect(function()
+                -- فتح محادثة خاصة
+                currentPrivateTarget=p.Name
+                chatMode="private"
+                PlayerPanel.Visible=false
+
+                -- مسح الرسائل وعرض الخاص
+                for _,c2 in ipairs(MsgScroll:GetChildren()) do
+                    if not c2:IsA("UIListLayout") then c2:Destroy() end
+                end
+                msgCount=0
+
+                -- تغيير placeholder
+                InputBox.PlaceholderText="🔒 خاص مع "..p.Name.."..."
+
+                -- عرض المحادثة السابقة
+                local msgsToShow=isOwner or isSubscriber and allPrivateMsgs or myPrivateMsgs
+                for _,msg in ipairs(msgsToShow) do
+                    if (msg.from==p.Name and msg.to==LP.Name) or
+                       (msg.from==LP.Name and msg.to==p.Name) then
+                        AddMsg(msg.from,msg.text,"private")
+                    end
+                end
+
+                AddMsg("النظام","محادثة خاصة مع "..p.Name.." 🔒","system")
+                N("خاص","فتحت محادثة مع "..p.Name)
+
+                btn.BackgroundColor3=Color3.fromRGB(0,50,20)
+                task.wait(0.3)
+                btn.BackgroundColor3=Color3.fromRGB(20,20,20)
             end)
         end
     end
 end
 
-local function MakeTargetCard()
-    local fr=Instance.new("Frame",CF)
-    fr.Size=UDim2.new(0,393,0,80);fr.BackgroundColor3=BK;fr.BorderSizePixel=0
-    Instance.new("UICorner",fr).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",fr).Color=G
-    local imgF=Instance.new("Frame",fr)
-    imgF.Size=UDim2.new(0,65,0,65);imgF.Position=UDim2.new(0,7,0.5,-32)
-    imgF.BackgroundColor3=Color3.fromRGB(10,20,50);imgF.BorderSizePixel=0
-    Instance.new("UICorner",imgF).CornerRadius=UDim.new(0,6)
-    Instance.new("UIStroke",imgF).Color=G
-    local imgL=Instance.new("TextLabel",imgF)
-    imgL.Size=UDim2.new(1,0,1,0);imgL.BackgroundTransparency=1
-    imgL.Text="👤";imgL.TextSize=28;imgL.Font=Enum.Font.GothamBold
-    local refBtn=Instance.new("TextButton",fr)
-    refBtn.Size=UDim2.new(0,24,0,24);refBtn.Position=UDim2.new(0,76,0,6)
-    refBtn.BackgroundColor3=G;refBtn.Text="⏱";refBtn.TextSize=12
-    refBtn.BorderSizePixel=0;refBtn.Font=Enum.Font.GothamBold;refBtn.TextColor3=Color3.new(0,0,0)
-    Instance.new("UICorner",refBtn).CornerRadius=UDim.new(0,5)
-    local nameBox=Instance.new("TextBox",fr)
-    nameBox.Size=UDim2.new(0,205,0,24);nameBox.Position=UDim2.new(0,104,0,6)
-    nameBox.BackgroundColor3=G;nameBox.TextColor3=Color3.new(0,0,0)
-    nameBox.PlaceholderText="@target...";nameBox.Text=""
-    nameBox.TextSize=12;nameBox.Font=Enum.Font.GothamBold;nameBox.BorderSizePixel=0
-    Instance.new("UICorner",nameBox).CornerRadius=UDim.new(0,5)
-    local infoLbl=Instance.new("TextLabel",fr)
-    infoLbl.Size=UDim2.new(0,280,0,45);infoLbl.Position=UDim2.new(0,76,0,34)
-    infoLbl.BackgroundTransparency=1;infoLbl.TextColor3=G
-    infoLbl.Text="UserID: ?\nDisplay: ?";infoLbl.TextSize=10
-    infoLbl.Font=Enum.Font.Gotham;infoLbl.TextXAlignment=Enum.TextXAlignment.Left;infoLbl.TextYAlignment=Enum.TextYAlignment.Top
-    local function UT(name)
-        S.Target=name
-        for _,p in ipairs(Players:GetPlayers()) do
-            if p.Name:lower():find(name:lower()) then
-                infoLbl.Text="UserID: "..p.UserId.."\nDisplay: "..p.DisplayName
-                return
-            end
-        end
+-- إرسال رسالة
+local function SendMsg()
+    local text=InputBox.Text
+    if text=="" then return end
+    InputBox.Text=""
+
+    if chatMode=="public" then
+        local msgData={from=LP.Name,text=text}
+        table.insert(publicMsgs,msgData)
+        AddMsg(LP.Name,text,"public")
+        -- إظهار في شات روبلوكس
+        local head=LP.Character and LP.Character:FindFirstChild("Head")
+        if head then Chat:Chat(head,text) end
+
+    elseif chatMode=="private" and currentPrivateTarget then
+        local msgData={from=LP.Name,to=currentPrivateTarget,text=text}
+        table.insert(myPrivateMsgs,msgData)
+        table.insert(allPrivateMsgs,msgData)
+        AddMsg(LP.Name,"→ "..currentPrivateTarget..": "..text,"private")
+        N("خاص","أرسلت لـ "..currentPrivateTarget)
     end
-    nameBox.FocusLost:Connect(function() UT(nameBox.Text) end)
-    refBtn.MouseButton1Click:Connect(function()
-        local names={}
-        for _,p in ipairs(Players:GetPlayers()) do if p~=LP then table.insert(names,p.Name) end end
-        if #names>0 then nameBox.Text=names[1];UT(names[1]) end
+end
+
+InputBox.FocusLost:Connect(function(enter) if enter then SendMsg() end end)
+
+-- زر رجوع للعام
+local BackBtn=Instance.new("TextButton",SGui)
+BackBtn.Size=UDim2.new(0,42,0,42)
+BackBtn.Position=UDim2.new(0,550,1,-370)
+BackBtn.BackgroundColor3=Color3.fromRGB(0,0,0)
+BackBtn.BackgroundTransparency=0.4
+BackBtn.Text="🌐"
+BackBtn.TextSize=22
+BackBtn.Font=Enum.Font.GothamBold
+BackBtn.TextColor3=Color3.new(1,1,1)
+BackBtn.BorderSizePixel=0
+Instance.new("UICorner",BackBtn).CornerRadius=UDim.new(0,8)
+BackBtn.MouseButton1Click:Connect(function()
+    chatMode="public"
+    currentPrivateTarget=nil
+    InputBox.PlaceholderText="Click Here To Chat..."
+    for _,c in ipairs(MsgScroll:GetChildren()) do
+        if not c:IsA("UIListLayout") then c:Destroy() end
+    end
+    msgCount=0
+    for _,msg in ipairs(publicMsgs) do AddMsg(msg.from,msg.text,"public") end
+    AddMsg("النظام","رجعت للشات العام 🌐","system")
+end)
+
+-- استقبال رسائل اللاعبين
+for _,p in ipairs(Players:GetPlayers()) do
+    if p~=LP then
+        p.Chatted:Connect(function(msg)
+            -- كشف رسائل /pm
+            if msg:sub(1,4)=="/pm " then
+                local rest=msg:sub(5)
+                local colon=rest:find(":")
+                if colon then
+                    local target=rest:sub(1,colon-1):gsub("%s","")
+                    local privateMsg=rest:sub(colon+1):gsub("^%s","")
+
+                    if target:lower()==LP.Name:lower() then
+                        local msgData={from=p.Name,to=LP.Name,text=privateMsg}
+                        table.insert(myPrivateMsgs,msgData)
+                        table.insert(allPrivateMsgs,msgData)
+                        if chatMode=="private" and currentPrivateTarget==p.Name then
+                            AddMsg(p.Name,privateMsg,"private")
+                        else
+                            N("🔒 خاص من "..p.Name,privateMsg,5)
+                        end
+                    elseif isOwner or isSubscriber then
+                        local msgData={from=p.Name,to=target,text=privateMsg}
+                        table.insert(allPrivateMsgs,msgData)
+                        N("👁️ "..p.Name.."→"..target,privateMsg,5)
+                    end
+                end
+            else
+                -- رسالة عامة
+                local msgData={from=p.Name,text=msg}
+                table.insert(publicMsgs,msgData)
+                if chatMode=="public" then
+                    AddMsg(p.Name,msg,"public")
+                end
+            end
+        end)
+    end
+end
+
+Players.PlayerAdded:Connect(function() task.wait(1);UpdatePlayers() end)
+Players.PlayerRemoving:Connect(function() task.wait(0.5);UpdatePlayers() end)
+
+-- لوحة الأونر
+if isOwner then
+    local OwnerBtn=Instance.new("TextButton",SGui)
+    OwnerBtn.Size=UDim2.new(0,42,0,42)
+    OwnerBtn.Position=UDim2.new(0,596,1,-370)
+    OwnerBtn.BackgroundColor3=Color3.fromRGB(180,140,0)
+    OwnerBtn.BackgroundTransparency=0.2
+    OwnerBtn.Text="👑"
+    OwnerBtn.TextSize=22
+    OwnerBtn.Font=Enum.Font.GothamBold
+    OwnerBtn.TextColor3=Color3.new(1,1,1)
+    OwnerBtn.BorderSizePixel=0
+    Instance.new("UICorner",OwnerBtn).CornerRadius=UDim.new(0,8)
+
+    local OwnerPanel=Instance.new("Frame",SGui)
+    OwnerPanel.Size=UDim2.new(0,220,0,110)
+    OwnerPanel.Position=UDim2.new(0,596,1,-490)
+    OwnerPanel.BackgroundColor3=Color3.fromRGB(20,15,0)
+    OwnerPanel.BackgroundTransparency=0.2
+    OwnerPanel.BorderSizePixel=0
+    OwnerPanel.Visible=false
+    Instance.new("UICorner",OwnerPanel).CornerRadius=UDim.new(0,8)
+    Instance.new("UIStroke",OwnerPanel).Color=Color3.fromRGB(220,180,0)
+
+    local opTitle=Instance.new("TextLabel",OwnerPanel)
+    opTitle.Size=UDim2.new(1,0,0,26)
+    opTitle.BackgroundColor3=Color3.fromRGB(180,140,0)
+    opTitle.TextColor3=Color3.new(0,0,0)
+    opTitle.Text="👑 إدارة المشتركين"
+    opTitle.TextSize=12
+    opTitle.Font=Enum.Font.GothamBold
+    opTitle.BorderSizePixel=0
+    Instance.new("UICorner",opTitle).CornerRadius=UDim.new(0,8)
+
+    local subBox=Instance.new("TextBox",OwnerPanel)
+    subBox.Size=UDim2.new(1,-12,0,30)
+    subBox.Position=UDim2.new(0,6,0,30)
+    subBox.BackgroundColor3=Color3.fromRGB(30,25,0)
+    subBox.TextColor3=Color3.fromRGB(255,200,0)
+    subBox.PlaceholderText="يوزر المشترك..."
+    subBox.Text=""
+    subBox.TextSize=12
+    subBox.Font=Enum.Font.Gotham
+    subBox.BorderSizePixel=0
+    subBox.ClearTextOnFocus=false
+    Instance.new("UICorner",subBox).CornerRadius=UDim.new(0,6)
+    Instance.new("UIStroke",subBox).Color=Color3.fromRGB(220,180,0)
+
+    local addBtn=Instance.new("TextButton",OwnerPanel)
+    addBtn.Size=UDim2.new(0.48,0,0,28)
+    addBtn.Position=UDim2.new(0,6,0,66)
+    addBtn.BackgroundColor3=Color3.fromRGB(0,180,80)
+    addBtn.TextColor3=Color3.new(1,1,1)
+    addBtn.Text="+ اضافة"
+    addBtn.TextSize=12
+    addBtn.Font=Enum.Font.GothamBold
+    addBtn.BorderSizePixel=0
+    Instance.new("UICorner",addBtn).CornerRadius=UDim.new(0,6)
+
+    local remBtn=Instance.new("TextButton",OwnerPanel)
+    remBtn.Size=UDim2.new(0.48,0,0,28)
+    remBtn.Position=UDim2.new(0.52,0,0,66)
+    remBtn.BackgroundColor3=Color3.fromRGB(180,50,50)
+    remBtn.TextColor3=Color3.new(1,1,1)
+    remBtn.Text="- ازالة"
+    remBtn.TextSize=12
+    remBtn.Font=Enum.Font.GothamBold
+    remBtn.BorderSizePixel=0
+    Instance.new("UICorner",remBtn).CornerRadius=UDim.new(0,6)
+
+    OwnerBtn.MouseButton1Click:Connect(function()
+        OwnerPanel.Visible=not OwnerPanel.Visible
+    end)
+
+    addBtn.MouseButton1Click:Connect(function()
+        local name=subBox.Text:gsub("%s","")
+        if name~="" then
+            subscribers[name]=true
+            isSubscriber=subscribers[LP.Name]==true
+            subBox.Text=""
+            N("👑","تم اضافة "..name.." كمشترك ⭐")
+            AddMsg("النظام",name.." أصبح مشتركاً ⭐","system")
+            UpdatePlayers()
+        end
+    end)
+
+    remBtn.MouseButton1Click:Connect(function()
+        local name=subBox.Text:gsub("%s","")
+        if name~="" and name~=OWNER then
+            subscribers[name]=nil
+            subBox.Text=""
+            N("👑","تم ازالة "..name)
+            AddMsg("النظام",name.." تم ازالته من المشتركين","system")
+            UpdatePlayers()
+        end
     end)
 end
 
--- ══ محتوى الأقسام ══
-local function LoadHome()
-    CC()
-    local info=Instance.new("Frame",CF)
-    info.Size=UDim2.new(0,393,0,130);info.BackgroundColor3=BK;info.BorderSizePixel=0
-    Instance.new("UICorner",info).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",info).Color=G
-    local txt=Instance.new("TextLabel",info)
-    txt.Size=UDim2.new(1,-14,1,-14);txt.Position=UDim2.new(0,7,0,7)
-    txt.BackgroundTransparency=1;txt.TextColor3=G
-    local nt=""
-    for _,line in ipairs(S.News) do nt=nt..line.."\n" end
-    txt.Text=nt;txt.TextSize=12;txt.Font=Enum.Font.Gotham
-    txt.TextXAlignment=Enum.TextXAlignment.Right;txt.TextYAlignment=Enum.TextYAlignment.Top
-    txt.TextWrapped=true;txt.LineHeight=1.6
-    MCard("من نحن",function() N("ASTA TEAM","المطور: baker780787 | v4.0",8) end,G)
-    MCard("الأوامر",function() N("أوامر","/fling /bang /tp /speed /invis /protect /esp",8) end,G)
-end
-
-local function LoadGame()
-    CC()
-    local chatFr=Instance.new("Frame",CF)
-    chatFr.Size=UDim2.new(0,393,0,44);chatFr.BackgroundColor3=BK;chatFr.BorderSizePixel=0
-    Instance.new("UICorner",chatFr).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",chatFr).Color=G
-    local chatBox=Instance.new("TextBox",chatFr)
-    chatBox.Size=UDim2.new(0.72,0,0.78,0);chatBox.Position=UDim2.new(0,7,0.11,0)
-    chatBox.BackgroundColor3=Color3.fromRGB(10,20,50);chatBox.TextColor3=G
-    chatBox.PlaceholderText="رسالة للسبام...";chatBox.Text=""
-    chatBox.TextSize=11;chatBox.Font=Enum.Font.Gotham;chatBox.BorderSizePixel=0;chatBox.ClearTextOnFocus=false
-    Instance.new("UICorner",chatBox).CornerRadius=UDim.new(0,5);Instance.new("UIStroke",chatBox).Color=G
-    local spdBox=Instance.new("TextBox",chatFr)
-    spdBox.Size=UDim2.new(0.21,0,0.78,0);spdBox.Position=UDim2.new(0.76,0,0.11,0)
-    spdBox.BackgroundColor3=G;spdBox.TextColor3=Color3.new(0,0,0);spdBox.Text="1"
-    spdBox.TextSize=10;spdBox.Font=Enum.Font.GothamBold;spdBox.BorderSizePixel=0;spdBox.ClearTextOnFocus=true
-    Instance.new("UICorner",spdBox).CornerRadius=UDim.new(0,5)
-    spdBox.FocusLost:Connect(function() S.SpamSpd=tonumber(spdBox.Text) or 1 end)
-    MTCard("سبام",function() S.SpamMsg=chatBox.Text;ToggleChatSpam(true) end,function() S.SpamOn=false end,G)
-    MCard("تجسس الرسائل",SpyMessages,G)
-    MCard("سبام الأسماء",SpamNames,G)
-    MCard("تقليد التارقت",MimicTarget,G)
-    MCard("سماع التارقت",ListenTarget,G)
-end
-
-local function LoadChar()
-    CC()
-    MNumInput("السرعة",16,1,99999,SetSpeed)
-    MNumInput("النط",50,1,99999,SetJump)
-    MNumInput("سرعة الطيران",80,1,500,function(v) S.FlySpd=v end)
-    MTCard("طيران",function() ToggleFly(true) end,function() ToggleFly(false) end,G)
-    MTCard("اختراق جدران",function() ToggleNoclip(true) end,function() ToggleNoclip(false) end,G)
-    MTCard("اختفاء",function() ToggleInvis(true) end,function() ToggleInvis(false) end,G)
-    MTCard("قفز لانهائي",function() ToggleInfJump(true) end,function() ToggleInfJump(false) end,G)
-    MTCard("حماية الصحة",function() ToggleGod(true) end,function() ToggleGod(false) end,G)
-    MTCard("قفل الكاميرا",function() ToggleCamLock(true) end,function() ToggleCamLock(false) end,G)
-    MCard("حفظ الموقع",SaveCP,G)
-    MCard("تحميل الموقع",LoadCP,G)
-    MCard("انتقال للمؤشر",TPTool,G)
-    MCard("ريسبون",Respawn,G)
-end
-
-local function LoadCustom()
-    CC()
-    MInput("اسم مخصص","اكتب اسمك",SetCustomName)
-    MCard("ازالة الاسم",RemoveCustomName,G)
-    MNumInput("لون R",255,0,255,function(v) S.CustomR=v end)
-    MNumInput("لون G",100,0,255,function(v) S.CustomG=v end)
-    MNumInput("لون B",0,0,255,function(v) S.CustomB=v end)
-    MCard("تطبيق اللون",function() SetCustomColor(S.CustomR,S.CustomG,S.CustomB) end,G)
-    MTCard("قوس قزح",function() AC("rbcolor",RS.Heartbeat:Connect(function() local c=GC();if not c then return end;local bc=c:FindFirstChild("Body Colors");if bc then local col=RB();bc.HeadColor3=col;bc.TorsoColor3=col;bc.LeftArmColor3=col;bc.RightArmColor3=col;bc.LeftLegColor3=col;bc.RightLegColor3=col end end)) end,function() DC("rbcolor") end,G)
-    MNumInput("الطول",1,0.1,6,function(v) local h=GH();if h then h.BodyHeightScale.Value=v end end)
-    MNumInput("العرض",1,0.1,6,function(v) local h=GH();if h then h.BodyWidthScale.Value=v end end)
-    MNumInput("الرأس",1,0.1,8,function(v) local h=GH();if h then h.HeadScale.Value=v end end)
-    MCard("حجم عادي",function() local h=GH();if h then h.BodyHeightScale.Value=1;h.BodyWidthScale.Value=1;h.BodyDepthScale.Value=1;h.HeadScale.Value=1 end end,G)
-end
-
-local function LoadTarget()
-    CC()
-    MakeTargetCard()
-    MakePlayersList()
-    MNumInput("قوة الفلنق",500,50,9999,function(v) S.FlingPower=v end)
-    MNumInput("قوة البانق",1000,50,9999,function(v) S.BangPower=v end)
-    MCard("فلنق",FlingTarget,G)
-    MTCard("فلنق مستمر",function() ToggleFlingLoop(true) end,function() DC("flingloop") end,OR)
-    MCard("بانق",BangTarget,G)
-    MTCard("بانق مستمر",function() ToggleBangLoop(true) end,function() DC("bangloop") end,OR)
-    MTCard("تدوير",function() ToggleSpinTarget(true) end,function() DC("spintarget") end,G)
-    MCard("تكبير",GiantTarget,G)
-    MCard("تصغير",TinyTarget,G)
-    MCard("سحب",PullTarget,G)
-    MTCard("سحب مستمر",function() TogglePullLoop(true) end,function() DC("pullloop") end,OR)
-    MTCard("تتبع ولصق",function() ToggleFollowTarget(true) end,function() DC("follow") end,G)
-    MCard("انتقال إليه",TPToTarget,G)
-    MTCard("مشاهدة",WatchTarget,StopWatch,G)
-    MCard("تحت الأرض",function() SendUnderground(S.Target) end,OR)
-    MCard("قتل",KillTarget,RD)
-end
-
-local function LoadTrollAll()
-    CC()
-    MNumInput("قوة الفلنق",500,50,9999,function(v) S.FlingPower=v end)
-    MNumInput("قوة البانق",1000,50,9999,function(v) S.BangPower=v end)
-    MCard("فلنق الجميع",FlingAll,OR)
-    MTCard("فلنق مستمر للجميع",function() ToggleFlingAllLoop(true) end,function() DC("flingall") end,RD)
-    MCard("بانق الجميع",BangAll,OR)
-    MCard("سحب الجميع",PullAll,G)
-    MCard("تبديل الأماكن",SwapPlayers,G)
-    MCard("تكبير الجميع",function() GiantAll(true) end,G)
-    MCard("تصغير الجميع",function() GiantAll(false) end,G)
-    MTCard("فلنق تلقائي",function() ToggleAutoFling(true) end,function() ToggleAutoFling(false) end,RD)
-    MCard("تجميد الجميع",function() FreezeAll(true) end,OR)
-    MCard("فك التجميد",function() FreezeAll(false) end,G)
-    MCard("سرقة الأدوات",StealTools,OR)
-end
-
-local function LoadTrollCars()
-    CC()
-    MCard("تطيير السيارات",FlingAllCars,OR)
-    MCard("قلب السيارات",FlipAllCars,G)
-    MCard("سرعة قصوى",MaxSpeedAllCars,G)
-    MTCard("فوضى السيارات",function() ToggleCarChaos(true) end,function() DC("carchaos") end,RD)
-end
-
-local function LoadTrollServer()
-    CC()
-    MCard("جاذبية صفر",ZeroGravity,OR)
-    MCard("جاذبية عادية",NormalGravity,G)
-    MCard("جاذبية قمر",MoonGravity,G)
-    MTCard("فوضى الجاذبية",function() ToggleGravChaos(true) end,function() ToggleGravChaos(false) end,RD)
-    MCard("صباح",SetDay,G)
-    MCard("ليل",SetNight,G)
-    MTCard("فوضى الوقت",function() ToggleTimeChaos(true) end,function() ToggleTimeChaos(false) end,RD)
-    MNumInput("مؤقت (ثواني)",30,5,300,function(v) StartTrollTimer(v) end)
-end
-
-local function LoadESP()
-    CC()
-    MTCard("ESP",function() ToggleESP(true) end,function() ToggleESP(false) end,G)
-    MTCard("ESP HUD",function() ToggleESPHUD(true) end,function() ToggleESPHUD(false) end,G)
-    MCard("أقرب لاعب",ShowNearestInfo,G)
-    MTCard("مطاردة تلقائية",function() ToggleAutoChase(true) end,function() ToggleAutoChase(false) end,OR)
-    MTCard("هروب تلقائي",function() ToggleAutoEscape(true) end,function() ToggleAutoEscape(false) end,G)
-    MCard("ID السيرفر",CopyServerID,G)
-    MCard("اعادة انضمام",RejoinServer,G)
-    MInput("انتقال لسيرفر","ID...",JoinServerByID)
-end
-
-local function LoadAnti()
-    CC()
-    local title=Instance.new("TextLabel",CF)
-    title.Size=UDim2.new(0,393,0,28);title.BackgroundColor3=Color3.fromRGB(0,30,80)
-    title.TextColor3=G;title.Text="  8 مضادات قوية ✅"
-    title.TextSize=12;title.Font=Enum.Font.GothamBold;title.TextXAlignment=Enum.TextXAlignment.Left;title.BorderSizePixel=0
-    Instance.new("UICorner",title).CornerRadius=UDim.new(0,7)
-    MTCard("مضاد فلنق",function() ToggleAntiFling(true) end,function() ToggleAntiFling(false) end,G)
-    MTCard("مضاد بانق/كيك",function() ToggleAntiBan(true) end,function() ToggleAntiBan(false) end,G)
-    MTCard("مضاد افك",function() ToggleAntiAFK(true) end,function() DC("antiafk") end,G)
-    MTCard("مضاد قتل",function() ToggleAntiKill(true) end,function() ToggleAntiKill(false) end,G)
-    MTCard("مضاد فراغ",function() ToggleAntiVoid(true) end,function() ToggleAntiVoid(false) end,G)
-    MTCard("مضاد تجميد",function() ToggleAntiFreeze(true) end,function() ToggleAntiFreeze(false) end,G)
-    MTCard("مضاد تجسس",function() ToggleAntiSpy(true) end,function() ToggleAntiSpy(false) end,G)
-    MTCard("حماية الصحة",function() ToggleGod(true) end,function() ToggleGod(false) end,G)
-    MCard("تفعيل كل المضادات",AllProtection,OR)
-end
-
-local function LoadPresets()
-    CC()
-    MCard("تخريب كامل",PresetTroll,RD)
-    MCard("حماية كاملة",PresetProtect,BL)
-    MCard("تخفي",PresetStealth,G)
-    MCard("ايقاف كل شيء",PresetStop,OR)
-end
-
-local function LoadAnims()
-    CC()
-    for name,id in pairs(animIds) do MCard(name,function() PlayAnim(id) end,G) end
-    MCard("ايقاف",StopAnim,RD)
-end
-
-local function LoadLog()
-    CC()
-    local logF=Instance.new("Frame",CF)
-    logF.Size=UDim2.new(0,393,0,280);logF.BackgroundColor3=BK;logF.BorderSizePixel=0
-    Instance.new("UICorner",logF).CornerRadius=UDim.new(0,7)
-    Instance.new("UIStroke",logF).Color=G
-    local t=Instance.new("TextLabel",logF)
-    t.Size=UDim2.new(1,0,0,22);t.BackgroundColor3=Color3.fromRGB(0,30,80);t.TextColor3=G
-    t.Text="  سجل الأحداث";t.TextSize=10;t.Font=Enum.Font.GothamBold;t.TextXAlignment=Enum.TextXAlignment.Left;t.BorderSizePixel=0
-    Instance.new("UICorner",t).CornerRadius=UDim.new(0,7)
-    local scroll=Instance.new("ScrollingFrame",logF)
-    scroll.Size=UDim2.new(1,-4,1,-26);scroll.Position=UDim2.new(0,2,0,24)
-    scroll.BackgroundTransparency=1;scroll.ScrollBarThickness=2;scroll.ScrollBarImageColor3=G
-    scroll.AutomaticCanvasSize=Enum.AutomaticSize.Y;scroll.CanvasSize=UDim2.new(0,0,0,0);scroll.BorderSizePixel=0
-    Instance.new("UIListLayout",scroll).Padding=UDim.new(0,2)
-    for _,event in ipairs(S.EventLog) do
-        local lbl=Instance.new("TextLabel",scroll)
-        lbl.Size=UDim2.new(1,-4,0,18);lbl.BackgroundColor3=Color3.fromRGB(8,15,40)
-        lbl.TextColor3=G;lbl.Text="  "..event;lbl.TextSize=10;lbl.Font=Enum.Font.Gotham
-        lbl.TextXAlignment=Enum.TextXAlignment.Left;lbl.BorderSizePixel=0
-        Instance.new("UICorner",lbl).CornerRadius=UDim.new(0,3)
-    end
-    MCard("تحديث",function() LoadLog() end,G)
-    MCard("مسح",function() S.EventLog={} end,G)
-end
-
-local function LoadBH()
-    CC()
-    MTCard("مرور المنازل",function() ToggleNoclip(true) end,function() ToggleNoclip(false) end,G)
-    MCard("منزل 1",function() TPToHouse(1) end,G)
-    MCard("منزل 2",function() TPToHouse(2) end,G)
-    MCard("منزل 3",function() TPToHouse(3) end,G)
-    MCard("حرق أقرب منزل",BurnNearestHouse,OR)
-    MTCard("سبام جرس",SpamDoorbell,function() DC("doorbell") end,G)
-    MCard("ازالة الباند",RemoveBand,G)
-end
-
-local function LoadBodies()
-    CC()
-    MNumInput("الطول",1,0.1,6,function(v) local h=GH();if h then h.BodyHeightScale.Value=v end end)
-    MNumInput("العرض",1,0.1,6,function(v) local h=GH();if h then h.BodyWidthScale.Value=v end end)
-    MNumInput("العمق",1,0.1,6,function(v) local h=GH();if h then h.BodyDepthScale.Value=v end end)
-    MNumInput("الرأس",1,0.1,8,function(v) local h=GH();if h then h.HeadScale.Value=v end end)
-    MCard("حجم عادي",function() SetBodyScale(1,1,1,1) end,G)
-    for _,p in ipairs(bodyPresets) do MCard(p.name,function() SetBodyScale(p.h,p.w,p.d,p.hd) end,G) end
-end
-
-local function LoadQuality()
-    CC()
-    MCard("جودة V1",SetQV1,G)
-    MCard("جودة V2",SetQV2,G)
-    MCard("جودة V4",SetQV4,G)
-    MCard("120 FPS",function() SC(function() setfpscap(120) end) end,G)
-    MCard("60 FPS",function() SC(function() setfpscap(60) end) end,G)
-    MCard("Anti Lag",AntiLag,G)
-    MNumInput("FOV",70,20,120,SetFOV)
-end
-
-local function LoadCamera()
-    CC()
-    MTCard("كاميرا حرة I/J/K/L",function() ToggleFreeCam(true) end,function() ToggleFreeCam(false) end,G)
-    MTCard("قفل الكاميرا",function() ToggleCamLock(true) end,function() ToggleCamLock(false) end,G)
-    MTCard("زوم بلا حد",function() LP.CameraMaxZoomDistance=500 end,function() LP.CameraMaxZoomDistance=128 end,G)
-end
-
-local function LoadWeather()
-    CC()
-    MTCard("مطر",function() ToggleRain(true) end,function() ToggleRain(false) end,G)
-    MTCard("ثلج",function() ToggleSnow(true) end,function() ToggleSnow(false) end,G)
-    MTCard("ديسكو",function() ToggleDisco(true) end,function() ToggleDisco(false) end,G)
-    MCard("صباح",SetDay,G)
-    MCard("ليل",SetNight,G)
-    MCard("جاذبية صفر",ZeroGravity,OR)
-    MCard("جاذبية عادية",NormalGravity,G)
-end
-
-local function LoadOutfits()
-    CC()
-    MCard("حفظ 1",function() SaveOutfit(1) end,G)
-    MCard("تحميل 1",function() LoadOutfit(1) end,G)
-    MCard("حفظ 2",function() SaveOutfit(2) end,G)
-    MCard("تحميل 2",function() LoadOutfit(2) end,G)
-    MCard("حفظ 3",function() SaveOutfit(3) end,G)
-    MCard("تحميل 3",function() LoadOutfit(3) end,G)
-    MCard("نسخ أقرب لاعب",CopyNearestOutfit,G)
-end
-
-local function LoadOwner()
-    CC()
-    if not isOwner then
-        local lbl=Instance.new("TextLabel",CF)
-        lbl.Size=UDim2.new(0,393,0,55)
-        lbl.BackgroundColor3=RD;lbl.TextColor3=Color3.new(1,1,1)
-        lbl.Text="🔒 للأونر baker780787 فقط"
-        lbl.TextSize=14;lbl.Font=Enum.Font.GothamBold;lbl.BorderSizePixel=0
-        Instance.new("UICorner",lbl).CornerRadius=UDim.new(0,7)
-        return
-    end
-    local badge=Instance.new("Frame",CF)
-    badge.Size=UDim2.new(0,393,0,38);badge.BackgroundColor3=GD;badge.BorderSizePixel=0
-    Instance.new("UICorner",badge).CornerRadius=UDim.new(0,7)
-    local bl=Instance.new("TextLabel",badge)
-    bl.Size=UDim2.new(1,0,1,0);bl.BackgroundTransparency=1
-    bl.TextColor3=Color3.new(0,0,0);bl.Text="👑 لوحة الأونر - baker780787"
-    bl.TextSize=13;bl.Font=Enum.Font.GothamBold
-    local nb=MInput("خبر جديد","اكتب الخبر",nil)
-    MCard("اضافة خبر",function() if nb and nb.Text~="" then table.insert(S.News,1,"[+] "..nb.Text);N("خبر","تم");nb.Text="" end end,GD)
-    MCard("مسح الأخبار",function() S.News={} end,RD)
-    MCard("بث رسالة",function() local h=GC() and GC():FindFirstChild("Head");if h then Chat:Chat(h,"📢 رسالة من الأونر baker780787") end end,GD)
-    MCard("تخريب كامل",PresetTroll,RD)
-    MCard("ايقاف كل شيء",PresetStop,OR)
-    MCard("كل المضادات",AllProtection,BL)
-    MCard("وضع الإله 👑",function() ToggleGod(true);ToggleFly(true);AllProtection();SetSpeed(150);N("OWNER","وضع الإله 👑") end,GD)
-end
-
--- بناء الأقسام
-local allTabs={
-    {name="الرئيسية",load=LoadHome,order=1},
-    {name="الشات",load=LoadGame,order=2},
-    {name="الاعب",load=LoadChar,order=3},
-    {name="مظهر",load=LoadCustom,order=4},
-    {name="استهداف",load=LoadTarget,order=5},
-    {name="تخريب الجميع",load=LoadTrollAll,order=6,color=OR},
-    {name="تخريب سيارات",load=LoadTrollCars,order=7,color=OR},
-    {name="تخريب السيرفر",load=LoadTrollServer,order=8,color=OR},
-    {name="ESP وتتبع",load=LoadESP,order=9,color=BL},
-    {name="المضادات 8x",load=LoadAnti,order=10,color=BL},
-    {name="Presets",load=LoadPresets,order=11,color=BL},
-    {name="انميشنات",load=LoadAnims,order=12},
-    {name="سجل الأحداث",load=LoadLog,order=13},
-    {name="البيوت",load=LoadBH,order=14},
-    {name="الاجسام",load=LoadBodies,order=15},
-    {name="الجودة",load=LoadQuality,order=16},
-    {name="الكاميرا",load=LoadCamera,order=17},
-    {name="الطقس",load=LoadWeather,order=18},
-    {name="نسخ سكنات",load=LoadOutfits,order=19},
-    {name=isOwner and "👑 الأونر" or "🔒 الأونر فقط",load=LoadOwner,order=20,color=GD},
-}
-
-for _,td in ipairs(allTabs) do
-    local btn=MSB(td.name,td.order,td.color)
-    btn.MouseButton1Click:Connect(function() ST(btn);td.load() end)
-end
-
--- زر فتح/إغلاق قابل للسحب
-local DragBtn=Instance.new("TextButton",SGui)
-DragBtn.Size=UDim2.new(0,58,0,58)
-DragBtn.Position=UDim2.new(0,8,0.5,-29)
-DragBtn.BackgroundColor3=Color3.fromRGB(0,255,120)
-DragBtn.Text="A";DragBtn.TextSize=22;DragBtn.Font=Enum.Font.GothamBold
-DragBtn.TextColor3=Color3.new(0,0,0);DragBtn.BorderSizePixel=0;DragBtn.ZIndex=10
-Instance.new("UICorner",DragBtn).CornerRadius=UDim.new(0,14)
-Instance.new("UIStroke",DragBtn).Color=Color3.fromRGB(0,200,255)
-RS.Heartbeat:Connect(function() DragBtn.BackgroundColor3=RB() end)
-
--- نظام السحب المحسن
-local dragStart=nil
-local btnStartPos=nil
-local wasDragged=false
-
-local function onDragStart(pos)
-    dragStart=pos
-    btnStartPos=DragBtn.Position
-    wasDragged=false
-end
-
-local function onDragMove(pos)
-    if not dragStart then return end
-    local delta=pos-dragStart
-    if delta.Magnitude>10 then
-        wasDragged=true
-        local sc=game:GetService("GuiService"):GetScreenResolution()
-        local nx=math.clamp(btnStartPos.X.Offset+delta.X,0,sc.X-58)
-        local ny=math.clamp(btnStartPos.Y.Offset+delta.Y,0,sc.Y-58)
-        DragBtn.Position=UDim2.new(0,nx,0,ny)
-    end
-end
-
-local function onDragEnd()
-    if not wasDragged then
-        Main.Visible=not Main.Visible
-    end
-    dragStart=nil
-    wasDragged=false
-end
-
--- موبايل
-DragBtn.TouchStarted:Connect(function(touch)
-    onDragStart(Vector2.new(touch.Position.X,touch.Position.Y))
-end)
-DragBtn.TouchMoved:Connect(function(touch)
-    onDragMove(Vector2.new(touch.Position.X,touch.Position.Y))
-end)
-DragBtn.TouchEnded:Connect(function()
-    onDragEnd()
-end)
-
--- كمبيوتر
-DragBtn.MouseButton1Down:Connect(function()
-    local mp=UIS:GetMouseLocation()
-    onDragStart(mp)
-end)
-UIS.InputChanged:Connect(function(input)
-    if dragStart and input.UserInputType==Enum.UserInputType.MouseMovement then
-        onDragMove(UIS:GetMouseLocation())
-    end
-end)
-UIS.InputEnded:Connect(function(input)
-    if input.UserInputType==Enum.UserInputType.MouseButton1 and dragStart then
-        onDragEnd()
-    end
-end)
-
-UIS.InputBegan:Connect(function(input,gp)
-    if gp then return end
-    if input.KeyCode==Enum.KeyCode.B then Main.Visible=not Main.Visible end
-end)
-
-local firstBtn=SideBar:FindFirstChild("S_الرئيسية")
-if firstBtn then ST(firstBtn);LoadHome() end
-
-task.wait(0.5)
-if isOwner then N("OWNER","مرحباً baker780787 👑",5)
-else N("ASTA v4.0","اضغط B أو الزر الملون | /protect للمضادات",5) end
+-- تشغيل
+UpdatePlayers()
+AddMsg("النظام","مرحباً! اضغط 👥 لاختيار لاعب للخاص | 🌐 للعام","system")
+if isOwner then AddMsg("النظام","أنت الأونر 👑 اضغط 👑 لإدارة المشتركين","system") end
+N("ASTA CHAT","شغّال مثل شات روبلوكس ✅",5)
