@@ -80,7 +80,6 @@ local pmTarget=nil
 local msgCount=0
 
 local function N(t,m,d) pcall(function() SG:SetCore("SendNotification",{Title=t,Text=m,Duration=d or 3}) end) end
-
 local function sendMsg(text)
     local head=LP.Character and LP.Character:FindFirstChild("Head")
     if head then pcall(function() game:GetService("Chat"):Chat(head,text) end) end
