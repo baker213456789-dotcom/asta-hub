@@ -20,54 +20,34 @@ local function addSub(n,days)
     else subscribers[n]={expire=os.time()+(days*86400)} end
 end
 
--- تشفير الخاص بمسافات غير مرئية
--- U+2060 = word joiner (غير مرئي تماماً)
--- U+200B = zero width space (غير مرئي)
-local BIT1="\226\129\160"  -- U+2060
-local BIT0="\226\128\139"  -- U+200B
-local SEP="\239\187\191"   -- U+FEFF BOM (فاصل غير مرئي)
-local HEADER="\226\128\143\226\128\143" -- علامة بداية الخاص
+-- تشفير الخاص - نظام بسيط وموثوق
+-- نستخدم مسافات عادية كـ padding + header خاص
+local PM_START="  		  " -- مسافات وtabs غير واضحة
+local PM_SEP="			"
 
 local function encodePM(to,text)
-    local function strToBits(s)
-        local bits=""
-        for i=1,#s do
-            local b=string.byte(s,i)
-            for bit=7,0,-1 do
-                bits=bits..(math.floor(b/2^bit)%2==1 and BIT1 or BIT0)
-            end
-            bits=bits..SEP
-        end
-        return bits
+    -- نحول النص لأرقام ASCII مفصولة بـ tab
+    local result=PM_START
+    local combined=to.."|"..text
+    for i=1,#combined do
+        result=result..tostring(string.byte(combined,i))..PM_SEP
     end
-    return HEADER..strToBits(to.."|||"..text)
+    return result
 end
 
 local function decodePM(msg)
-    if msg:sub(1,#HEADER)~=HEADER then return nil,nil end
-    local data=msg:sub(#HEADER+1)
+    if msg:sub(1,#PM_START)~=PM_START then return nil,nil end
+    local data=msg:sub(#PM_START+1)
     local text=""
-    for chunk in (data..SEP):gmatch("(.-)"..SEP) do
-        if chunk~="" then
-            local byte=0
-            local bits={}
-            local pos=1
-            while pos<=#chunk do
-                local b1=chunk:sub(pos,pos+2)
-                if b1==BIT1 then table.insert(bits,1);pos=pos+3
-                elseif b1==BIT0 then table.insert(bits,0);pos=pos+3
-                else break end
-            end
-            if #bits==8 then
-                local val=0
-                for i,b in ipairs(bits) do val=val+b*2^(8-i) end
-                text=text..string.char(math.floor(val))
-            end
+    for num in data:gmatch("(%d+)"..PM_SEP) do
+        local n=tonumber(num)
+        if n and n>=32 and n<=126 then
+            text=text..string.char(n)
         end
     end
-    local sep=text:find("|||")
+    local sep=text:find("|")
     if sep then
-        return text:sub(1,sep-1),text:sub(sep+3)
+        return text:sub(1,sep-1),text:sub(sep+1)
     end
     return nil,nil
 end
