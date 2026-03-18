@@ -37,19 +37,28 @@ local function N(t,m,d)
 end
 
 local function sendChat(text)
+    -- SayMessageRequest - الطريقة الرسمية لروبلوكس
+    local ok=false
     pcall(function()
         local rs=game:GetService("ReplicatedStorage")
-        local ev=rs:FindFirstChild("DefaultChatSystemChatEvents")
-        if ev then
-            local sm=ev:FindFirstChild("SayMessageRequest")
-            if sm then sm:FireServer(text,"All");return end
+        -- بحث عن RemoteEvent الشات
+        for _,v in ipairs(rs:GetDescendants()) do
+            if v:IsA("RemoteEvent") and v.Name=="SayMessageRequest" then
+                v:FireServer(text,"All")
+                ok=true
+                return
+            end
         end
     end)
+    if ok then return end
+    -- Chat:Chat كخيار ثاني
     pcall(function()
         local head=LP.Character and LP.Character:FindFirstChild("Head")
         if head then game:GetService("Chat"):Chat(head,text) end
     end)
 end
+
+
 
 -- GUI
 local PGui=LP.PlayerGui
