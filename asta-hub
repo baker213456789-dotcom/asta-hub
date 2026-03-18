@@ -1,13 +1,12 @@
--- ASTA CHAT v10
+-- ASTA CHAT v11
 local LP=game:GetService("Players").LocalPlayer
 local Players=game:GetService("Players")
-local RS=game:GetService("RunService")
-local UIS=game:GetService("UserInputService")
 local SG=game:GetService("StarterGui")
 
 local OWNER="baker780787"
 local isOwner=LP.Name==OWNER
 
+-- اشتراكات
 local subscribers={[OWNER]={expire=math.huge}}
 local function isSubscribed(n)
     if not subscribers[n] then return false end
@@ -15,76 +14,53 @@ local function isSubscribed(n)
     return os.time()<subscribers[n].expire
 end
 local function addSub(n,days)
-    if days==math.huge then
-        subscribers[n]={expire=math.huge}
-    else
-        subscribers[n]={expire=os.time()+(days*86400)}
-    end
+    if days==math.huge then subscribers[n]={expire=math.huge}
+    else subscribers[n]={expire=os.time()+(days*86400)} end
 end
 
-local PM_TAG="[PM]"
-local PM_SEP="[S]"
-
-local function encodePM(to,text)
-    return PM_TAG..to..PM_SEP..text..PM_TAG
-end
-
+-- خاص
+local PM_TAG="[ASTAPM]"
+local PM_MID="[MID]"
+local function encodePM(to,text) return PM_TAG..to..PM_MID..text..PM_TAG end
 local function decodePM(msg)
+    if not msg:find(PM_TAG,1,true) then return nil,nil end
     if msg:sub(1,#PM_TAG)~=PM_TAG then return nil,nil end
     if msg:sub(-#PM_TAG)~=PM_TAG then return nil,nil end
     local inner=msg:sub(#PM_TAG+1,-(#PM_TAG+1))
-    local s=inner:find(PM_SEP,1,true)
-    if s then
-        return inner:sub(1,s-1),inner:sub(s+#PM_SEP)
-    end
+    local s=inner:find(PM_MID,1,true)
+    if s then return inner:sub(1,s-1),inner:sub(s+#PM_MID) end
     return nil,nil
 end
 
-local allPM={}
-local myPM={}
-local pubMsgs={}
-local chatMode="public"
-local pmTarget=nil
-local msgCount=0
-local confirmedUsers={[LP.Name]=true}
-
 local function N(t,m,d)
-    pcall(function()
-        SG:SetCore("SendNotification",{Title=t,Text=m,Duration=d or 3})
-    end)
+    pcall(function() SG:SetCore("SendNotification",{Title=t,Text=m,Duration=d or 3}) end)
 end
 
 local function sendChat(text)
-    -- طريقة 1: SayMessageRequest
-    local sent=false
     pcall(function()
         local rs=game:GetService("ReplicatedStorage")
-        local events=rs:FindFirstChild("DefaultChatSystemChatEvents")
-        if events then
-            local sayMsg=events:FindFirstChild("SayMessageRequest")
-            if sayMsg then sayMsg:FireServer(text,"All");sent=true end
+        local ev=rs:FindFirstChild("DefaultChatSystemChatEvents")
+        if ev then
+            local sm=ev:FindFirstChild("SayMessageRequest")
+            if sm then sm:FireServer(text,"All");return end
         end
     end)
-    if sent then return end
-    -- طريقة 2: Chat:Chat
     pcall(function()
         local head=LP.Character and LP.Character:FindFirstChild("Head")
         if head then game:GetService("Chat"):Chat(head,text) end
     end)
 end
-end
 
 -- GUI
 local PGui=LP.PlayerGui
-local old=PGui:FindFirstChild("ASTA_C10")
-if old then old:Destroy() end
-
+local old=PGui:FindFirstChild("ASTA_C11");if old then old:Destroy() end
 local SGui=Instance.new("ScreenGui",PGui)
-SGui.Name="ASTA_C10"
+SGui.Name="ASTA_C11"
 SGui.ResetOnSpawn=false
 SGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+SGui.DisplayOrder=999
 
--- الشات
+-- شات
 local Main=Instance.new("Frame",SGui)
 Main.Size=UDim2.new(0,370,0,250)
 Main.Position=UDim2.new(0.5,-185,0.5,-125)
@@ -92,6 +68,7 @@ Main.BackgroundColor3=Color3.fromRGB(0,0,0)
 Main.BackgroundTransparency=0.35
 Main.BorderSizePixel=0
 Main.Visible=false
+Main.ZIndex=10
 Instance.new("UICorner",Main).CornerRadius=UDim.new(0,10)
 
 local MsgScroll=Instance.new("ScrollingFrame",Main)
@@ -103,6 +80,7 @@ MsgScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
 MsgScroll.CanvasSize=UDim2.new(0,0,0,0)
 MsgScroll.BorderSizePixel=0
 MsgScroll.ScrollingDirection=Enum.ScrollingDirection.Y
+MsgScroll.ZIndex=10
 local MsgLayout=Instance.new("UIListLayout",MsgScroll)
 MsgLayout.Padding=UDim.new(0,1)
 MsgLayout.SortOrder=Enum.SortOrder.LayoutOrder
@@ -113,6 +91,7 @@ InputBG.Position=UDim2.new(0,0,1,-42)
 InputBG.BackgroundColor3=Color3.fromRGB(0,0,0)
 InputBG.BackgroundTransparency=0.3
 InputBG.BorderSizePixel=0
+InputBG.ZIndex=10
 Instance.new("UICorner",InputBG).CornerRadius=UDim.new(0,10)
 
 local InputBox=Instance.new("TextBox",InputBG)
@@ -128,17 +107,19 @@ InputBox.Font=Enum.Font.Gotham
 InputBox.BorderSizePixel=0
 InputBox.ClearTextOnFocus=false
 InputBox.TextXAlignment=Enum.TextXAlignment.Left
+InputBox.ZIndex=11
 
 local CancelBtn=Instance.new("TextButton",InputBG)
 CancelBtn.Size=UDim2.new(0,32,0,32)
 CancelBtn.Position=UDim2.new(1,-36,0.5,-16)
 CancelBtn.BackgroundColor3=Color3.fromRGB(150,0,0)
-CancelBtn.Text="✕"
+CancelBtn.Text="X"
 CancelBtn.TextSize=14
 CancelBtn.Font=Enum.Font.GothamBold
 CancelBtn.TextColor3=Color3.new(1,1,1)
 CancelBtn.BorderSizePixel=0
 CancelBtn.Visible=false
+CancelBtn.ZIndex=11
 Instance.new("UICorner",CancelBtn).CornerRadius=UDim.new(0,6)
 
 -- شريط الوضع
@@ -149,30 +130,33 @@ ModeBar.BackgroundColor3=Color3.fromRGB(0,0,0)
 ModeBar.BackgroundTransparency=0.45
 ModeBar.BorderSizePixel=0
 ModeBar.Visible=false
+ModeBar.ZIndex=10
 Instance.new("UICorner",ModeBar).CornerRadius=UDim.new(0,7)
 
 local ModeLbl=Instance.new("TextLabel",ModeBar)
 ModeLbl.Size=UDim2.new(1,-50,1,0)
 ModeLbl.Position=UDim2.new(0,8,0,0)
 ModeLbl.BackgroundTransparency=1
-ModeLbl.Text="💬 الشات العام"
+ModeLbl.Text="Chat العام"
 ModeLbl.TextSize=11
 ModeLbl.Font=Enum.Font.GothamBold
 ModeLbl.TextColor3=Color3.fromRGB(200,200,200)
 ModeLbl.TextXAlignment=Enum.TextXAlignment.Right
+ModeLbl.ZIndex=10
 
 if isOwner then
-    local ownerBtn=Instance.new("TextButton",ModeBar)
-    ownerBtn.Size=UDim2.new(0,20,0,18)
-    ownerBtn.Position=UDim2.new(0,3,0.5,-9)
-    ownerBtn.BackgroundColor3=Color3.fromRGB(180,140,0)
-    ownerBtn.Text="👑"
-    ownerBtn.TextSize=11
-    ownerBtn.Font=Enum.Font.GothamBold
-    ownerBtn.TextColor3=Color3.new(0,0,0)
-    ownerBtn.BorderSizePixel=0
-    Instance.new("UICorner",ownerBtn).CornerRadius=UDim.new(0,4)
-    ownerBtn.MouseButton1Click:Connect(function()
+    local ob=Instance.new("TextButton",ModeBar)
+    ob.Size=UDim2.new(0,20,0,18)
+    ob.Position=UDim2.new(0,3,0.5,-9)
+    ob.BackgroundColor3=Color3.fromRGB(180,140,0)
+    ob.Text="O"
+    ob.TextSize=11
+    ob.Font=Enum.Font.GothamBold
+    ob.TextColor3=Color3.new(0,0,0)
+    ob.BorderSizePixel=0
+    ob.ZIndex=11
+    Instance.new("UICorner",ob).CornerRadius=UDim.new(0,4)
+    ob.MouseButton1Click:Connect(function()
         local op=SGui:FindFirstChild("ASTA_OP")
         if op then op.Visible=not op.Visible end
     end)
@@ -186,7 +170,7 @@ SideBtn.BackgroundColor3=Color3.fromRGB(18,18,22)
 SideBtn.BackgroundTransparency=0.15
 SideBtn.Text=""
 SideBtn.BorderSizePixel=0
-SideBtn.ZIndex=10
+SideBtn.ZIndex=999
 Instance.new("UICorner",SideBtn).CornerRadius=UDim.new(0,10)
 local sideStroke=Instance.new("UIStroke",SideBtn)
 sideStroke.Color=Color3.fromRGB(150,0,255)
@@ -196,9 +180,10 @@ local sideIcon=Instance.new("TextLabel",SideBtn)
 sideIcon.Size=UDim2.new(1,0,0,28)
 sideIcon.Position=UDim2.new(0,0,0,2)
 sideIcon.BackgroundTransparency=1
-sideIcon.Text="💬"
+sideIcon.Text="C"
 sideIcon.TextSize=17
 sideIcon.Font=Enum.Font.GothamBold
+sideIcon.ZIndex=999
 
 local chatLetters={"C","H","A","T"}
 local chatColors={
@@ -216,9 +201,10 @@ for i=1,4 do
     lbl.TextSize=14
     lbl.Font=Enum.Font.GothamBold
     lbl.TextColor3=chatColors[i]
+    lbl.ZIndex=999
 end
 
--- لوحة الأونر
+-- لوحة الاونر
 if isOwner then
     local OP=Instance.new("Frame",SGui)
     OP.Name="ASTA_OP"
@@ -230,24 +216,25 @@ if isOwner then
     OP.Visible=false
     OP.Active=true
     OP.Draggable=true
+    OP.ZIndex=999
     Instance.new("UICorner",OP).CornerRadius=UDim.new(0,10)
     Instance.new("UIStroke",OP).Color=Color3.fromRGB(220,180,0)
 
-    local opTitle=Instance.new("TextLabel",OP)
-    opTitle.Size=UDim2.new(1,0,0,26)
-    opTitle.BackgroundColor3=Color3.fromRGB(180,140,0)
-    opTitle.TextColor3=Color3.new(0,0,0)
-    opTitle.Text="👑 إدارة المشتركين"
-    opTitle.TextSize=11
-    opTitle.Font=Enum.Font.GothamBold
-    opTitle.BorderSizePixel=0
-    Instance.new("UICorner",opTitle).CornerRadius=UDim.new(0,10)
+    local opT=Instance.new("TextLabel",OP)
+    opT.Size=UDim2.new(1,0,0,26)
+    opT.BackgroundColor3=Color3.fromRGB(180,140,0)
+    opT.TextColor3=Color3.new(0,0,0)
+    opT.Text="Owner - اشتراكات"
+    opT.TextSize=11
+    opT.Font=Enum.Font.GothamBold
+    opT.BorderSizePixel=0
+    Instance.new("UICorner",opT).CornerRadius=UDim.new(0,10)
 
-    local cOP=Instance.new("TextButton",opTitle)
+    local cOP=Instance.new("TextButton",opT)
     cOP.Size=UDim2.new(0,22,0,20)
     cOP.Position=UDim2.new(0,2,0.5,-10)
     cOP.BackgroundColor3=Color3.fromRGB(200,50,50)
-    cOP.Text="✕"
+    cOP.Text="X"
     cOP.TextSize=10
     cOP.Font=Enum.Font.GothamBold
     cOP.TextColor3=Color3.new(1,1,1)
@@ -271,7 +258,7 @@ if isOwner then
     Instance.new("UIStroke",nBox).Color=Color3.fromRGB(220,180,0)
 
     local btns={
-        {t="أسبوع",d=7,c=Color3.fromRGB(0,150,80)},
+        {t="اسبوع",d=7,c=Color3.fromRGB(0,150,80)},
         {t="شهر",d=30,c=Color3.fromRGB(0,120,200)},
         {t="سنة",d=365,c=Color3.fromRGB(150,0,200)},
         {t="دائم",d=math.huge,c=Color3.fromRGB(180,140,0)},
@@ -288,14 +275,13 @@ if isOwner then
         btn.Font=Enum.Font.GothamBold
         btn.BorderSizePixel=0
         Instance.new("UICorner",btn).CornerRadius=UDim.new(0,5)
-        local days=sb.d
-        local name_ref=nBox
+        local d=sb.d
         btn.MouseButton1Click:Connect(function()
-            local n=name_ref.Text:gsub("%s","")
-            if n=="" then N("👑","اكتب اليوزر أولاً") return end
-            addSub(n,days)
-            name_ref.Text=""
-            N("👑",n.." اشتراك "..sb.t.." ✅")
+            local n=nBox.Text:gsub("%s","")
+            if n=="" then N("Owner","اكتب اليوزر") return end
+            addSub(n,d)
+            nBox.Text=""
+            N("Owner",n.." مشترك "..sb.t)
         end)
     end
 
@@ -304,7 +290,7 @@ if isOwner then
     rBtn.Position=UDim2.new(0,5,0,86)
     rBtn.BackgroundColor3=Color3.fromRGB(180,50,50)
     rBtn.TextColor3=Color3.new(1,1,1)
-    rBtn.Text="- ازالة الاشتراك"
+    rBtn.Text="ازالة الاشتراك"
     rBtn.TextSize=10
     rBtn.Font=Enum.Font.GothamBold
     rBtn.BorderSizePixel=0
@@ -314,73 +300,35 @@ if isOwner then
         if n~="" and n~=OWNER then
             subscribers[n]=nil
             nBox.Text=""
-            N("👑","تم ازالة "..n)
-        end
-    end)
-
-    local sScroll=Instance.new("ScrollingFrame",OP)
-    sScroll.Size=UDim2.new(1,-10,0,50)
-    sScroll.Position=UDim2.new(0,5,0,112)
-    sScroll.BackgroundColor3=Color3.fromRGB(10,8,0)
-    sScroll.BackgroundTransparency=0.3
-    sScroll.BorderSizePixel=0
-    sScroll.ScrollBarThickness=2
-    sScroll.ScrollBarImageColor3=Color3.fromRGB(220,180,0)
-    sScroll.AutomaticCanvasSize=Enum.AutomaticSize.Y
-    sScroll.CanvasSize=UDim2.new(0,0,0,0)
-    Instance.new("UICorner",sScroll).CornerRadius=UDim.new(0,5)
-    local sLayout=Instance.new("UIListLayout",sScroll)
-    sLayout.Padding=UDim.new(0,2)
-
-    local refBtn=Instance.new("TextButton",OP)
-    refBtn.Size=UDim2.new(1,-10,0,16)
-    refBtn.Position=UDim2.new(0,5,0,165)
-    refBtn.BackgroundColor3=Color3.fromRGB(0,100,50)
-    refBtn.TextColor3=Color3.new(1,1,1)
-    refBtn.Text="تحديث قائمة المشتركين"
-    refBtn.TextSize=9
-    refBtn.Font=Enum.Font.GothamBold
-    refBtn.BorderSizePixel=0
-    Instance.new("UICorner",refBtn).CornerRadius=UDim.new(0,4)
-    refBtn.MouseButton1Click:Connect(function()
-        for _,c in ipairs(sScroll:GetChildren()) do
-            if not c:IsA("UIListLayout") then c:Destroy() end
-        end
-        for name,_ in pairs(subscribers) do
-            if name~=OWNER then
-                local lbl=Instance.new("TextLabel",sScroll)
-                lbl.Size=UDim2.new(1,0,0,16)
-                lbl.BackgroundTransparency=1
-                lbl.TextColor3=Color3.fromRGB(255,200,0)
-                lbl.Text="  "..name
-                lbl.TextSize=10
-                lbl.Font=Enum.Font.Gotham
-                lbl.TextXAlignment=Enum.TextXAlignment.Right
-            end
+            N("Owner","ازيل "..n)
         end
     end)
 end
 
--- دالة فتح خاص
+-- متغيرات
+local chatMode="public"
+local pmTarget=nil
+local msgCount=0
+local confirmedUsers={[LP.Name]=true}
+
 local function openPM(target)
     if target==LP.Name then return end
     pmTarget=target
     chatMode="private"
-    ModeLbl.Text="🔒 PRVT TO "..target
+    ModeLbl.Text="PRVT TO "..target
     InputBox.PlaceholderText="PRVT TO "..target.."..."
     CancelBtn.Visible=true
-    N("خاص","فتحت خاص مع "..target)
+    N("خاص",target)
 end
 
 CancelBtn.MouseButton1Click:Connect(function()
     chatMode="public"
     pmTarget=nil
-    ModeLbl.Text="💬 الشات العام"
+    ModeLbl.Text="Chat العام"
     InputBox.PlaceholderText="Click Here To Chat..."
     CancelBtn.Visible=false
 end)
 
--- دالة إضافة رسالة
 local function AddMsg(sender,text,msgType,toName)
     msgCount=msgCount+1
     local row=Instance.new("Frame",MsgScroll)
@@ -389,6 +337,7 @@ local function AddMsg(sender,text,msgType,toName)
     row.BackgroundTransparency=1
     row.BorderSizePixel=0
     row.LayoutOrder=msgCount
+    row.ZIndex=10
 
     local lbl=Instance.new("TextLabel",row)
     lbl.Size=UDim2.new(1,0,0,0)
@@ -400,54 +349,49 @@ local function AddMsg(sender,text,msgType,toName)
     lbl.TextSize=14
     lbl.BorderSizePixel=0
     lbl.RichText=true
+    lbl.ZIndex=10
 
     if msgType=="system" then
         lbl.Text='<font color="rgb(100,220,130)"><i>'..text..'</i></font>'
         lbl.TextColor3=Color3.new(1,1,1)
     elseif msgType=="private" then
-        local toStr=toName or "?"
-        lbl.Text='<font color="rgb(255,100,255)"><b>[TO: '..toStr..'] ['..sender..']:</b></font> <font color="rgb(255,255,255)">'..text..'</font>'
+        local t=toName or "?"
+        lbl.Text='<font color="rgb(255,100,255)"><b>[TO:'..t..']['..sender..']:</b></font> '..text
         lbl.TextColor3=Color3.new(1,1,1)
     else
         local colors={"rgb(255,200,0)","rgb(255,130,130)","rgb(130,200,255)","rgb(130,255,130)","rgb(255,180,80)"}
         local nc=sender==LP.Name and "rgb(200,240,255)" or colors[(string.byte(sender,1) or 1)%5+1]
-        lbl.Text='<font color="'..nc..'"><b>['..sender..']:</b></font> <font color="rgb(255,255,255)">'..text..'</font>'
+        lbl.Text='<font color="'..nc..'"><b>['..sender..']:</b></font> '..text
         lbl.TextColor3=Color3.new(1,1,1)
 
         if sender~=LP.Name then
-            lbl.MouseButton1Click=nil
-            local nameBtn=Instance.new("TextButton",row)
-            nameBtn.Size=UDim2.new(1,0,1,0)
-            nameBtn.BackgroundTransparency=1
-            nameBtn.Text=""
-            nameBtn.BorderSizePixel=0
-            nameBtn.ZIndex=lbl.ZIndex+1
-            nameBtn.MouseButton1Click:Connect(function()
+            local clickArea=Instance.new("TextButton",row)
+            clickArea.Size=UDim2.new(1,0,1,0)
+            clickArea.BackgroundTransparency=1
+            clickArea.Text=""
+            clickArea.BorderSizePixel=0
+            clickArea.ZIndex=lbl.ZIndex+1
+            clickArea.MouseButton1Click:Connect(function()
                 openPM(sender)
             end)
         end
     end
 
     task.wait()
-    MsgScroll.CanvasPosition=Vector2.new(0,MsgLayout.AbsoluteContentSize.Y+999)
+    MsgScroll.CanvasPosition=Vector2.new(0,MsgLayout.AbsoluteContentSize.Y+9999)
 end
 
--- إرسال
 local function SendMsg()
     local text=InputBox.Text
     if text=="" then return end
     InputBox.Text=""
-
     if chatMode=="private" and pmTarget then
         local encoded=encodePM(pmTarget,text)
         sendChat(encoded)
         AddMsg(LP.Name,text,"private",pmTarget)
-        table.insert(myPM,{from=LP.Name,to=pmTarget,text=text})
-        table.insert(allPM,{from=LP.Name,to=pmTarget,text=text})
     else
         sendChat(text)
         AddMsg(LP.Name,text,"public")
-        table.insert(pubMsgs,{from=LP.Name,text=text})
     end
 end
 
@@ -455,21 +399,16 @@ InputBox.FocusLost:Connect(function(enter)
     if enter then SendMsg() end
 end)
 
--- استقبال رسائل
 local function handleMsg(p,msg)
     local to,pmsg=decodePM(msg)
     if to and pmsg then
         if to==LP.Name then
-            table.insert(myPM,{from=p.Name,to=LP.Name,text=pmsg})
-            table.insert(allPM,{from=p.Name,to=LP.Name,text=pmsg})
             AddMsg(p.Name,pmsg,"private",LP.Name)
-            if not Main.Visible then N("🔒 "..p.Name,pmsg,5) end
+            if not Main.Visible then N("PM "..p.Name,pmsg,5) end
         elseif isOwner or isSubscribed(LP.Name) then
-            table.insert(allPM,{from=p.Name,to=to,text=pmsg})
             AddMsg(p.Name,pmsg,"private",to)
         end
     else
-        table.insert(pubMsgs,{from=p.Name,text=msg})
         AddMsg(p.Name,msg,"public")
     end
 end
@@ -487,7 +426,7 @@ Players.PlayerAdded:Connect(function(p)
             local to,_=decodePM(msg)
             if to then
                 confirmedUsers[p.Name]=true
-                AddMsg("النظام",p.Name.." joined the script","system")
+                AddMsg("System",p.Name.." joined","system")
             end
         end
         handleMsg(p,msg)
@@ -497,25 +436,17 @@ end)
 Players.PlayerRemoving:Connect(function(p)
     if confirmedUsers[p.Name] then
         confirmedUsers[p.Name]=nil
-        AddMsg("النظام",p.Name.." left the script","system")
+        AddMsg("System",p.Name.." left","system")
     end
 end)
 
--- فتح/إغلاق
 SideBtn.MouseButton1Click:Connect(function()
     Main.Visible=not Main.Visible
     ModeBar.Visible=Main.Visible
-    if Main.Visible then
-        sideStroke.Color=Color3.fromRGB(0,255,120)
-    else
-        sideStroke.Color=Color3.fromRGB(150,0,255)
-    end
+    sideStroke.Color=Main.Visible and Color3.fromRGB(0,255,120) or Color3.fromRGB(150,0,255)
 end)
 
--- تشغيل
 task.wait(0.5)
-AddMsg("النظام",LP.Name.." joined the script","system")
-if isOwner then
-    AddMsg("النظام","انت الاونر اضغط 👑","system")
-end
-N("ASTA CHAT","اضغط CHAT",4)
+AddMsg("System",LP.Name.." joined the script","system")
+if isOwner then AddMsg("System","You are the Owner","system") end
+N("ASTA CHAT","Press CHAT to open",4)
