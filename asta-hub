@@ -37,26 +37,41 @@ local function N(t,m,d)
 end
 
 local function sendChat(text)
-    -- SayMessageRequest - الطريقة الرسمية لروبلوكس
-    local ok=false
+    local sent=false
+    -- طريقة 1: TextChatService الجديد
+    pcall(function()
+        local tcs=game:GetService("TextChatService")
+        local ch=tcs.TextChannels:FindFirstChild("RBXGeneral")
+        if ch then ch:SendAsync(text);sent=true end
+    end)
+    if sent then return end
+    -- طريقة 2: Legacy SayMessageRequest
     pcall(function()
         local rs=game:GetService("ReplicatedStorage")
-        -- بحث عن RemoteEvent الشات
-        for _,v in ipairs(rs:GetDescendants()) do
-            if v:IsA("RemoteEvent") and v.Name=="SayMessageRequest" then
-                v:FireServer(text,"All")
-                ok=true
-                return
-            end
+        local ev=rs:FindFirstChild("DefaultChatSystemChatEvents")
+        if ev then
+            local sm=ev:FindFirstChild("SayMessageRequest")
+            if sm then sm:FireServer(text,"All");sent=true end
         end
     end)
-    if ok then return end
-    -- Chat:Chat كخيار ثاني
+    if sent then return end
+    -- طريقة 3: Chat:Chat
     pcall(function()
         local head=LP.Character and LP.Character:FindFirstChild("Head")
         if head then game:GetService("Chat"):Chat(head,text) end
     end)
 end
+
+-- استقبال رسائل - TextChatService الجديد
+pcall(function()
+    local tcs=game:GetService("TextChatService")
+    tcs.MessageReceived:Connect(function(msg)
+        local sender=msg.TextSource and msg.TextSource.Name
+        if not sender or sender==LP.Name then return end
+        local p=game:GetService("Players"):FindFirstChild(sender)
+        if p then handleMsg(p,msg.Text) end
+    end)
+end)
 
 
 
