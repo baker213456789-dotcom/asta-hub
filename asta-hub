@@ -55,12 +55,23 @@ local function N(t,m,d)
 end
 
 local function sendChat(text)
-    local head=LP.Character and LP.Character:FindFirstChild("Head")
-    if head then
-        pcall(function()
-            game:GetService("Chat"):Chat(head,text)
-        end)
-    end
+    -- طريقة 1: SayMessageRequest
+    local sent=false
+    pcall(function()
+        local rs=game:GetService("ReplicatedStorage")
+        local events=rs:FindFirstChild("DefaultChatSystemChatEvents")
+        if events then
+            local sayMsg=events:FindFirstChild("SayMessageRequest")
+            if sayMsg then sayMsg:FireServer(text,"All");sent=true end
+        end
+    end)
+    if sent then return end
+    -- طريقة 2: Chat:Chat
+    pcall(function()
+        local head=LP.Character and LP.Character:FindFirstChild("Head")
+        if head then game:GetService("Chat"):Chat(head,text) end
+    end)
+end
 end
 
 -- GUI
